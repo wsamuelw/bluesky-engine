@@ -87,9 +87,24 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 .stTabs [data-baseweb="tab-highlight"] {
     display: none !important;
     background: transparent !important;
+    height: 0 !important;
 }
 .stTabs [data-baseweb="tab-highlight"] > div {
     background: transparent !important;
+    height: 0 !important;
+}
+/* Additional selectors for Streamlit's tab underline */
+.stTabs div[role="tab"][aria-selected="true"]::after {
+    display: none !important;
+}
+.stTabs div[role="tab"][aria-selected="true"]::before {
+    display: none !important;
+}
+.stTabs div[role="tab"]::after {
+    display: none !important;
+}
+.stTabs div[role="tab"]::before {
+    display: none !important;
 }
 
 /* Ticker strip */
