@@ -53,35 +53,45 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 }
 
 /* Topbar */
-.topbar {
+/* Header - matches mockup 6-terminal.html */
+.stRadio > div {
     background: #111;
-    border-bottom: 1px solid #222;
-    padding: 12px 20px;
+    border: 1px solid #222;
+    border-radius: 0;
+    padding: 10px 20px;
     margin: -2rem -2rem 2rem -2rem;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 0;
 }
-.topbar .brand {
+/* Brand name - first item */
+.stRadio > div > label:first-child {
     color: #00d4ff;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 700;
     font-family: 'JetBrains Mono', monospace;
+    letter-spacing: -0.5px;
+    cursor: default;
+    pointer-events: none;
 }
-.topbar .brand span { color: #555; }
-.topbar .nav-links {
-    display: flex;
-    gap: 4px;
-}
-.topbar .nav-link {
+/* Navigation links */
+.stRadio > div > label {
     color: #555;
-    font-size: 12px;
     font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 1px;
-    padding: 8px 16px;
-    border-radius: 2px;
+    margin-left: 20px;
+    padding: 0;
     cursor: pointer;
+}
+.stRadio > div > label:hover {
+    color: #c8c8c8;
+    background: transparent;
+}
+.stRadio > div > label[data-checked="true"] {
+    color: #00d4ff;
+    background: transparent;
 }
 .topbar .nav-link:hover {
     color: #c8c8c8;
@@ -423,33 +433,29 @@ if "verification_results" not in st.session_state:
 
 
 # =============================================================
-# HEADER
-# =============================================================
-
-st.markdown("""
-<div class="topbar">
-    <div class="brand">bsky_growth <span>v1.0</span></div>
-    <div class="nav-links">
-        <span class="nav-link" data-page="DASHBOARD">DASHBOARD</span>
-        <span class="nav-link" data-page="LIKE">LIKE</span>
-        <span class="nav-link" data-page="FOLLOW">FOLLOW</span>
-        <span class="nav-link" data-page="UNFOLLOW">UNFOLLOW</span>
-        <span class="nav-link" data-page="SETTINGS">SETTINGS</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-
-# =============================================================
 # NAVIGATION
 # =============================================================
 
 page = st.radio(
     "Navigation",
-    ["DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "SETTINGS"],
+    ["bsky_growth v1.0", "DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "SETTINGS"],
     horizontal=True,
     label_visibility="collapsed",
 )
+
+
+# =============================================================
+# BRAND NAME (not a page - shows welcome message)
+# =============================================================
+
+if page == "bsky_growth v1.0":
+    st.markdown("""
+    <div style="text-align:center;padding:60px 20px;color:#888;font-size:14px;font-family:'JetBrains Mono',monospace">
+        <div style="font-size:24px;color:#00d4ff;margin-bottom:16px">bsky_growth <span style="color:#555">v1.0</span></div>
+        <div style="margin-bottom:8px">Bluesky Follower Growth Platform</div>
+        <div style="color:#555;font-size:12px">Select a tab to get started</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # =============================================================
