@@ -602,30 +602,34 @@ with tab_like:
 
         # Run the bot
         if run_clicked:
-            st.session_state.bot_running = True
-            st.session_state.like_log_lines = []
+            # Validate delays
+            if delay_min > delay_max:
+                st.error("Min delay must be <= max delay")
+            else:
+                st.session_state.bot_running = True
+                st.session_state.like_log_lines = []
 
-            # Callback to update log display in real-time
-            def log_callback(line):
-                st.session_state.like_log_lines.append(line)
-                log_text = "\n".join(st.session_state.like_log_lines[-50:])
-                log_placeholder.code(log_text, language="bash")
+                # Callback to update log display in real-time
+                def log_callback(line):
+                    st.session_state.like_log_lines.append(line)
+                    log_text = "\n".join(st.session_state.like_log_lines[-50:])
+                    log_placeholder.code(log_text, language="bash")
 
-            # Run the bot (synchronous)
-            try:
-                like_bot_run(
-                    configured_accounts,
-                    batch_size,
-                    likes_per_user,
-                    delay_min,
-                    delay_max,
-                    log_callback=log_callback,
-                )
-                st.success("Like bot run complete!")
-            except Exception as e:
-                st.error(f"Bot error: {e}")
+                # Run the bot (synchronous)
+                try:
+                    like_bot_run(
+                        configured_accounts,
+                        batch_size,
+                        likes_per_user,
+                        delay_min,
+                        delay_max,
+                        log_callback=log_callback,
+                    )
+                    st.success("Like bot run complete!")
+                except Exception as e:
+                    st.error(f"Bot error: {e}")
 
-            st.session_state.bot_running = False
+                st.session_state.bot_running = False
         else:
             # Show existing log or placeholder
             if st.session_state.like_log_lines:
@@ -740,38 +744,42 @@ with tab_follow:
 
         # Run the bot
         if follow_run_clicked:
-            # Validate accounts with targets
-            valid_accounts = [
-                a for a in configured_accounts
-                if a.get("target")
-            ]
-
-            if not valid_accounts:
-                st.error("No targets configured. Add a target account for at least one of your accounts.")
+            # Validate delays
+            if follow_delay_min > follow_delay_max:
+                st.error("Min delay must be <= max delay")
             else:
-                st.session_state.bot_running = True
-                st.session_state.follow_log_lines = []
+                # Validate accounts with targets
+                valid_accounts = [
+                    a for a in configured_accounts
+                    if a.get("target")
+                ]
 
-                # Callback to update log display
-                def follow_log_callback(line):
-                    st.session_state.follow_log_lines.append(line)
-                    log_text = "\n".join(st.session_state.follow_log_lines[-50:])
-                    follow_log_placeholder.code(log_text, language="bash")
+                if not valid_accounts:
+                    st.error("No targets configured. Add a target account for at least one of your accounts.")
+                else:
+                    st.session_state.bot_running = True
+                    st.session_state.follow_log_lines = []
 
-                # Run the bot
-                try:
-                    follow_bot_run(
-                        valid_accounts,
-                        pull_limit,
-                        daily_cap,
-                        follow_delay_min,
-                        follow_delay_max,
-                        auto_like,
-                        log_callback=follow_log_callback,
-                    )
-                    st.success("Follow bot run complete!")
-                except Exception as e:
-                    st.error(f"Bot error: {e}")
+                    # Callback to update log display
+                    def follow_log_callback(line):
+                        st.session_state.follow_log_lines.append(line)
+                        log_text = "\n".join(st.session_state.follow_log_lines[-50:])
+                        follow_log_placeholder.code(log_text, language="bash")
+
+                    # Run the bot
+                    try:
+                        follow_bot_run(
+                            valid_accounts,
+                            pull_limit,
+                            daily_cap,
+                            follow_delay_min,
+                            follow_delay_max,
+                            auto_like,
+                            log_callback=follow_log_callback,
+                        )
+                        st.success("Follow bot run complete!")
+                    except Exception as e:
+                        st.error(f"Bot error: {e}")
 
                 st.session_state.bot_running = False
         else:
@@ -916,29 +924,33 @@ with tab_unfollow:
 
         # Run the bot
         if unfollow_clicked:
-            st.session_state.bot_running = True
-            st.session_state.unfollow_log_lines = []
+            # Validate delays
+            if unfollow_delay_min > unfollow_delay_max:
+                st.error("Min delay must be <= max delay")
+            else:
+                st.session_state.bot_running = True
+                st.session_state.unfollow_log_lines = []
 
-            # Callback to update log display
-            def unfollow_log_callback(line):
-                st.session_state.unfollow_log_lines.append(line)
-                log_text = "\n".join(st.session_state.unfollow_log_lines[-50:])
-                unfollow_log_placeholder.code(log_text, language="bash")
+                # Callback to update log display
+                def unfollow_log_callback(line):
+                    st.session_state.unfollow_log_lines.append(line)
+                    log_text = "\n".join(st.session_state.unfollow_log_lines[-50:])
+                    unfollow_log_placeholder.code(log_text, language="bash")
 
-            # Run the bot
-            try:
-                unfollow_bot_run(
-                    configured_accounts,
-                    days_threshold,
-                    daily_cap,
-                    unfollow_delay_min,
-                    unfollow_delay_max,
-                    exemptions,
-                    log_callback=unfollow_log_callback,
-                )
-                st.success("Unfollow bot run complete!")
-            except Exception as e:
-                st.error(f"Bot error: {e}")
+                # Run the bot
+                try:
+                    unfollow_bot_run(
+                        configured_accounts,
+                        days_threshold,
+                        daily_cap,
+                        unfollow_delay_min,
+                        unfollow_delay_max,
+                        exemptions,
+                        log_callback=unfollow_log_callback,
+                    )
+                    st.success("Unfollow bot run complete!")
+                except Exception as e:
+                    st.error(f"Bot error: {e}")
 
             st.session_state.bot_running = False
         else:
