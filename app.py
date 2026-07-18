@@ -69,6 +69,24 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     font-family: 'JetBrains Mono', monospace;
 }
 .topbar .brand span { color: #555; }
+.topbar .nav-links {
+    display: flex;
+    gap: 4px;
+}
+.topbar .nav-link {
+    color: #555;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 8px 16px;
+    border-radius: 2px;
+    cursor: pointer;
+}
+.topbar .nav-link:hover {
+    color: #c8c8c8;
+    background: #1a1a1a;
+}
 
 /* Ticker strip */
 .ticker {
@@ -411,8 +429,12 @@ if "verification_results" not in st.session_state:
 st.markdown("""
 <div class="topbar">
     <div class="brand">bsky_growth <span>v1.0</span></div>
-    <div style="color:#888;font-size:11px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:2px">
-        Bluesky Follower Growth Platform
+    <div class="nav-links">
+        <span class="nav-link" data-page="DASHBOARD">DASHBOARD</span>
+        <span class="nav-link" data-page="LIKE">LIKE</span>
+        <span class="nav-link" data-page="FOLLOW">FOLLOW</span>
+        <span class="nav-link" data-page="UNFOLLOW">UNFOLLOW</span>
+        <span class="nav-link" data-page="SETTINGS">SETTINGS</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
