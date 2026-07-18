@@ -408,14 +408,18 @@ header {visibility: hidden;}
 # SESSION STATE
 # =============================================================
 
-if "accounts" not in st.session_state:
-    st.session_state.accounts = [
-        {"handle": "", "password": "", "target": "", "enabled": True},
-        {"handle": "", "password": "", "target": "", "enabled": True},
-        {"handle": "", "password": "", "target": "", "enabled": True},
-        {"handle": "", "password": "", "target": "", "enabled": True},
-        {"handle": "", "password": "", "target": "", "enabled": True},
-    ]
+# Single account
+if "handle" not in st.session_state:
+    st.session_state.handle = ""
+
+if "password" not in st.session_state:
+    st.session_state.password = ""
+
+if "target" not in st.session_state:
+    st.session_state.target = ""
+
+if "verified" not in st.session_state:
+    st.session_state.verified = False
 
 if "bot_running" not in st.session_state:
     st.session_state.bot_running = False
@@ -471,31 +475,18 @@ tab_dashboard, tab_like, tab_follow, tab_unfollow, tab_settings = st.tabs([
 # =============================================================
 
 with tab_dashboard:
-    # Get configured accounts
-    valid_accounts = [
-        a for a in st.session_state.accounts
-        if a.get("enabled") and a.get("handle") and a.get("password")
-    ]
-
-    if not valid_accounts:
-        st.info("Configure your accounts in the SETTINGS tab to see live stats here.")
+    # Check if account is configured
+    if not st.session_state.handle or not st.session_state.password:
+        st.info("Configure your account in the SETTINGS tab to see live stats here.")
     else:
-        # Account selector dropdown
-        account_options = [f"@{a['handle']}" for a in valid_accounts]
-        selected = st.selectbox("SELECT ACCOUNT", account_options, key="dashboard_account")
-
-        # Get selected account
-        selected_idx = account_options.index(selected)
-        selected_account = valid_accounts[selected_idx]
-
-        # Fetch stats for selected account
+        # Fetch stats for the account
         try:
             from utils.auth import login
             from utils.stats import get_stats
 
             with st.spinner("Fetching stats..."):
-                client = login(selected_account["handle"], selected_account["password"])
-                stats = get_stats(selected_account["handle"], client)
+                client = login(st.session_state.handle, st.session_state.password)
+                stats = get_stats(st.session_state.handle, client)
 
             followers = stats["followers"]
             following = stats["following"]
@@ -521,13 +512,13 @@ with tab_dashboard:
                 </div>
                 <div class="ticker-item">
                     <span class="label">Handle</span>
-                    <span class="value">@{selected_account['handle']}</span>
+                    <span class="value">@{st.session_state.handle}</span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
         except Exception as e:
-            st.error(f"Failed to fetch stats for @{selected_account['handle']}: {str(e)[:200]}")
+            st.error(f"Failed to fetch stats: {str(e)[:200]}")
 
     # Load history for chart
     history = load_history()
@@ -638,29 +629,14 @@ with tab_like:
     </div>
     """, unsafe_allow_html=True)
 
-    # Show connected accounts
-    configured_accounts = [
-        a for a in st.session_state.accounts
-        if a.get("handle") and a.get("password")
-    ]
-
-    if not configured_accounts:
-        st.warning("No accounts configured. Go to SETTINGS tab to add accounts first.")
+    # Check if account is configured
+    if not st.session_state.handle or not st.session_state.password:
+        st.warning("No account configured. Go to SETTINGS tab to add your account first.")
     else:
-        st.markdown("""
-        <div style="margin-bottom:10px">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Connected Accounts</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Show accounts as pills/chips with enabled/disabled state
-        accounts_html = " ".join([
-            f'<span style="display:inline-block;background:#1a1a1a;border:1px solid #333;padding:6px 14px;border-radius:20px;font-size:13px;margin:0 6px 6px 0;font-family:JetBrains Mono,monospace;opacity:{"1" if a.get("enabled", True) else "0.4"}">@{a["handle"]} {"✓" if a.get("enabled", True) else "✗"}</span>'
-            for a in configured_accounts
-        ])
+        # Show account
         st.markdown(f"""
         <div style="margin-bottom:20px">
-            {accounts_html}
+            <span style="display:inline-block;background:#1a1a1a;border:1px solid #333;padding:6px 14px;border-radius:2px;font-size:13px;font-family:JetBrains Mono,monospace">@{st.session_state.handle}</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -692,7 +668,7 @@ with tab_like:
         with col_info:
             st.markdown(f"""
             <div style="padding:10px 0;font-size:12px;color:#888">
-                <strong style="color:#c8c8c8">{len(configured_accounts)} accounts</strong> connected ·
+                <strong style="color:#c8c8c8">@{st.session_state.handle}</strong> ·
                 batch={batch_size} · daily cap={daily_cap} · delay={delay_min}-{delay_max}s ·
                 est. {int(batch_size * (delay_min + delay_max) / 2 / 60)} min
             </div>
@@ -719,6 +695,9 @@ with tab_like:
                 st.session_state.like_bot_running = True
                 st.session_state.like_log_lines = []
 
+                # Create single account list for the bot
+                account = [{"handle": st.session_state.handle, "password": st.session_state.password, "enabled": True}]
+
                 # Callback to update log display in real-time
                 def log_callback(line):
                     st.session_state.like_log_lines.append(line)
@@ -729,7 +708,7 @@ with tab_like:
                 with st.spinner("Running Like Bot..."):
                     try:
                         results = like_bot_run(
-                            configured_accounts,
+                            account,
                             batch_size,
                             likes_per_user,
                             delay_min,
@@ -775,48 +754,42 @@ with tab_follow:
     </div>
     """, unsafe_allow_html=True)
 
-    # Get configured accounts from Settings
-    configured_accounts = [
-        a for a in st.session_state.accounts
-        if a.get("handle") and a.get("password")
-    ]
-
-    if not configured_accounts:
-        st.warning("No accounts configured. Go to SETTINGS tab to add accounts first.")
+    # Check if account is configured
+    if not st.session_state.handle or not st.session_state.password:
+        st.warning("No account configured. Go to SETTINGS tab to add your account first.")
     else:
-        # Show accounts with target input
+        # Show account with target input
         st.markdown("""
         <div style="margin-bottom:10px">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Assign Target Accounts</span>
+            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Assign Target Account</span>
         </div>
         """, unsafe_allow_html=True)
 
-        for i, acc in enumerate(configured_accounts):
-            col1, col2, col3 = st.columns([2, 1, 2])
+        col1, col2, col3 = st.columns([2, 1, 2])
 
-            with col1:
-                st.markdown(f"""
-                <div style="padding:10px 0;font-size:14px;font-weight:600;color:#c8c8c8">
-                    @{acc['handle']}
-                </div>
-                """, unsafe_allow_html=True)
+        with col1:
+            st.markdown(f"""
+            <div style="padding:10px 0;font-size:14px;font-weight:600;color:#c8c8c8">
+                @{st.session_state.handle}
+            </div>
+            """, unsafe_allow_html=True)
 
-            with col2:
-                st.markdown(f"""
-                <div style="padding:10px 0;font-size:14px;color:#888;text-align:center">
-                    →
-                </div>
-                """, unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"""
+            <div style="padding:10px 0;font-size:14px;color:#888;text-align:center">
+                →
+            </div>
+            """, unsafe_allow_html=True)
 
-            with col3:
-                target = st.text_input(
-                    f"TARGET FOR @{acc['handle']}",
-                    value=acc.get("target", ""),
-                    placeholder="karpathy.bsky.social",
-                    key=f"follow_target_{i}",
-                    label_visibility="collapsed",
-                )
-                st.session_state.accounts[i]["target"] = target
+        with col3:
+            target = st.text_input(
+                f"TARGET FOR @{st.session_state.handle}",
+                value=st.session_state.target,
+                placeholder="karpathy.bsky.social",
+                key="follow_target",
+                label_visibility="collapsed",
+            )
+            st.session_state.target = target
 
         # Config
         st.markdown("""
@@ -875,22 +848,20 @@ with tab_follow:
             if follow_delay_min > follow_delay_max:
                 st.error("Min delay must be <= max delay")
             else:
-                # Validate accounts with targets
-                valid_accounts = []
-                for a in configured_accounts:
-                    target = a.get("target", "").strip()
-                    if target:
-                        # Validate handle format
-                        if "." not in target:
-                            st.error(f"Invalid target @{target}. Must be a full handle like 'karpathy.bsky.social'")
-                            valid_accounts = []
-                            break
-                        else:
-                            valid_accounts.append(a)
-
-                if not valid_accounts:
-                    st.error("No targets configured. Add a target account for at least one of your accounts.")
+                # Validate target
+                target = st.session_state.target.strip()
+                if not target:
+                    st.error("No target configured. Add a target account.")
+                elif "." not in target:
+                    st.error(f"Invalid target @{target}. Must be a full handle like 'karpathy.bsky.social'")
                 else:
+                    # Create single account list for the bot
+                    valid_accounts = [{
+                        "handle": st.session_state.handle,
+                        "password": st.session_state.password,
+                        "target": target,
+                        "enabled": True
+                    }]
                     st.session_state.follow_bot_running = True
                     st.session_state.follow_log_lines = []
 
@@ -951,29 +922,14 @@ with tab_unfollow:
     </div>
     """, unsafe_allow_html=True)
 
-    # Get configured accounts
-    configured_accounts = [
-        a for a in st.session_state.accounts
-        if a.get("handle") and a.get("password")
-    ]
-
-    if not configured_accounts:
-        st.warning("No accounts configured. Go to SETTINGS tab to add accounts first.")
+    # Check if account is configured
+    if not st.session_state.handle or not st.session_state.password:
+        st.warning("No account configured. Go to SETTINGS tab to add your account first.")
     else:
-        # Show connected accounts
-        st.markdown("""
-        <div style="margin-bottom:10px">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Connected Accounts</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-        accounts_html = " ".join([
-            f'<span style="display:inline-block;background:#1a1a1a;border:1px solid #333;padding:6px 14px;border-radius:20px;font-size:13px;margin:0 6px 6px 0;font-family:JetBrains Mono,monospace;opacity:{"1" if a.get("enabled", True) else "0.4"}">@{a["handle"]} {"✓" if a.get("enabled", True) else "✗"}</span>'
-            for a in configured_accounts
-        ])
+        # Show account
         st.markdown(f"""
         <div style="margin-bottom:20px">
-            {accounts_html}
+            <span style="display:inline-block;background:#1a1a1a;border:1px solid #333;padding:6px 14px;border-radius:2px;font-size:13px;font-family:JetBrains Mono,monospace">@{st.session_state.handle}</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1041,8 +997,11 @@ with tab_unfollow:
             </div>
             """, unsafe_allow_html=True)
 
+            # Create single account list for preview
+            account = [{"handle": st.session_state.handle, "password": st.session_state.password, "enabled": True}]
+
             with st.spinner("Fetching preview data..."):
-                preview_results = get_unfollow_preview(configured_accounts, days_threshold, exemptions)
+                preview_results = get_unfollow_preview(account, days_threshold, exemptions)
 
             for r in preview_results:
                 if "error" in r:
@@ -1089,7 +1048,7 @@ with tab_unfollow:
                 with st.spinner("Running Unfollow Bot..."):
                     try:
                         results = unfollow_bot_run(
-                            configured_accounts,
+                            account,
                             days_threshold,
                             daily_cap,
                             unfollow_delay_min,
@@ -1132,101 +1091,55 @@ with tab_settings:
     <div style="margin-bottom:20px">
         <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Account Configuration</span>
         <br>
-        <span style="font-size:13px;color:#888">Add your Bluesky accounts. App passwords are stored in session only.</span>
+        <span style="font-size:13px;color:#888">Add your Bluesky account. App password is stored in session only.</span>
     </div>
     """, unsafe_allow_html=True)
 
-    # Account inputs
-    for i in range(5):
-        col1, col2, col3, col4 = st.columns([3, 3, 1, 1])
+    # Account input
+    col1, col2 = st.columns(2)
 
-        with col1:
-            handle = st.text_input(
-                f"HANDLE {i+1}",
-                value=st.session_state.accounts[i].get("handle", ""),
-                placeholder="alice.bsky.social",
-                key=f"handle_{i}",
-            )
-            st.session_state.accounts[i]["handle"] = handle
+    with col1:
+        handle = st.text_input(
+            "HANDLE",
+            value=st.session_state.handle,
+            placeholder="alice.bsky.social",
+            key="settings_handle",
+        )
+        st.session_state.handle = handle
 
-        with col2:
-            password = st.text_input(
-                f"APP PASSWORD {i+1}",
-                value=st.session_state.accounts[i].get("password", ""),
-                type="password",
-                placeholder="xxxx-xxxx-xxxx-xxxx",
-                key=f"password_{i}",
-            )
-            st.session_state.accounts[i]["password"] = password
+    with col2:
+        password = st.text_input(
+            "APP PASSWORD",
+            value=st.session_state.password,
+            type="password",
+            placeholder="xxxx-xxxx-xxxx-xxxx",
+            key="settings_password",
+        )
+        st.session_state.password = password
 
-        with col3:
-            enabled = st.checkbox(
-                "ON",
-                value=st.session_state.accounts[i].get("enabled", True),
-                key=f"enabled_{i}",
-            )
-            st.session_state.accounts[i]["enabled"] = enabled
-
-        with col4:
-            # Show verification status
-            if i < len(st.session_state.verification_results):
-                result = st.session_state.verification_results[i]
-                if result["status"] == "ok":
-                    st.markdown("✅")
-                elif result["status"] == "error":
-                    st.markdown("❌")
-                else:
-                    st.markdown("—")
-            else:
-                st.markdown("—")
+    # Verification status
+    if st.session_state.verified:
+        st.markdown("✅ Account verified")
+    else:
+        st.markdown("— Not verified")
 
     # Save button with auth verification
-    if st.button("SAVE & VERIFY ACCOUNTS", key="save_accounts"):
-        results = []
-        for i, acc in enumerate(st.session_state.accounts):
-            handle = acc.get("handle", "").strip()
-            password = acc.get("password", "").strip()
+    if st.button("SAVE & VERIFY", key="save_accounts"):
+        handle = st.session_state.handle.strip()
+        password = st.session_state.password.strip()
 
-            if not handle or not password:
-                results.append({"index": i+1, "handle": handle or "empty", "status": "skip", "msg": "No credentials"})
-                continue
-
+        if not handle or not password:
+            st.error("Please enter both handle and app password.")
+        else:
             try:
                 from utils.auth import login
                 client = login(handle, password)
                 profile = client.app.bsky.actor.get_profile({"actor": handle})
-                results.append({
-                    "index": i+1,
-                    "handle": handle,
-                    "status": "ok",
-                    "msg": f"Authenticated as @{profile.handle} · {profile.followers_count or 0:,} followers"
-                })
+                st.session_state.verified = True
+                st.success(f"Authenticated as @{profile.handle} · {profile.followers_count or 0:,} followers")
             except Exception as e:
-                results.append({
-                    "index": i+1,
-                    "handle": handle,
-                    "status": "error",
-                    "msg": str(e)[:200]
-                })
-
-        # Store results in session state
-        st.session_state.verification_results = results
-
-        # Display results
-        for r in results:
-            if r["status"] == "ok":
-                st.success(f"Account {r['index']} @{r['handle']}: {r['msg']}")
-            elif r["status"] == "error":
-                st.error(f"Account {r['index']} @{r['handle']}: {r['msg']}")
-            else:
-                st.info(f"Account {r['index']}: {r['msg']}")
-
-        # Count successes
-        ok_count = sum(1 for r in results if r["status"] == "ok")
-        if ok_count > 0:
-            st.success(f"{ok_count} account(s) verified and ready to use.")
-        else:
-            st.warning("No accounts verified. Check your handles and app passwords.")
+                st.session_state.verified = False
+                st.error(f"Authentication failed: {e}")
 
     # Instructions
     st.markdown("""
