@@ -475,9 +475,11 @@ tab_dashboard, tab_like, tab_follow, tab_unfollow, tab_settings = st.tabs([
 # =============================================================
 
 with tab_dashboard:
-    # Check if account is configured
+    # Check if account is configured and verified
     if not st.session_state.handle or not st.session_state.password:
         st.info("Configure your account in the SETTINGS tab to see live stats here.")
+    elif not st.session_state.verified:
+        st.info("Please verify your account in the SETTINGS tab first.")
     else:
         # Fetch stats for the account
         try:
