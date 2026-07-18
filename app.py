@@ -659,7 +659,15 @@ with tab_like:
                         )
                         st.success("Like bot run complete!")
                     except Exception as e:
-                        st.error(f"Bot error: {e}")
+                        error_msg = str(e).lower()
+                        if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
+                            st.error(f"Authentication failed: {e}. Check your credentials in SETTINGS.")
+                        elif "rate" in error_msg or "429" in error_msg:
+                            st.error(f"Rate limited: {e}. Wait a few minutes and try again.")
+                        elif "timeout" in error_msg or "connection" in error_msg:
+                            st.error(f"Network error: {e}. Check your connection and try again.")
+                        else:
+                            st.error(f"Bot error: {e}")
 
                 st.session_state.like_bot_running = False
         else:
@@ -812,7 +820,15 @@ with tab_follow:
                             )
                             st.success("Follow bot run complete!")
                         except Exception as e:
-                            st.error(f"Bot error: {e}")
+                            error_msg = str(e).lower()
+                            if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
+                                st.error(f"Authentication failed: {e}. Check your credentials in SETTINGS.")
+                            elif "rate" in error_msg or "429" in error_msg:
+                                st.error(f"Rate limited: {e}. Wait a few minutes and try again.")
+                            elif "timeout" in error_msg or "connection" in error_msg:
+                                st.error(f"Network error: {e}. Check your connection and try again.")
+                            else:
+                                st.error(f"Bot error: {e}")
 
                     st.session_state.follow_bot_running = False
         else:
@@ -984,7 +1000,15 @@ with tab_unfollow:
                         )
                         st.success("Unfollow bot run complete!")
                     except Exception as e:
-                        st.error(f"Bot error: {e}")
+                        error_msg = str(e).lower()
+                        if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
+                            st.error(f"Authentication failed: {e}. Check your credentials in SETTINGS.")
+                        elif "rate" in error_msg or "429" in error_msg:
+                            st.error(f"Rate limited: {e}. Wait a few minutes and try again.")
+                        elif "timeout" in error_msg or "connection" in error_msg:
+                            st.error(f"Network error: {e}. Check your connection and try again.")
+                        else:
+                            st.error(f"Bot error: {e}")
 
                 st.session_state.unfollow_bot_running = False
         else:
