@@ -327,6 +327,35 @@ header {visibility: hidden;}
 .stTabs [data-baseweb="tab-border"] {
     display: none;
 }
+
+/* Radio navigation */
+.stRadio > div {
+    display: flex;
+    gap: 4px;
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 2px;
+    padding: 8px 12px;
+}
+.stRadio > div > label {
+    color: #888;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 8px 16px;
+    border-radius: 2px;
+    cursor: pointer;
+}
+.stRadio > div > label:hover {
+    color: #c8c8c8;
+    background: #1a1a1a;
+}
+.stRadio > div > label[data-checked="true"] {
+    color: #00d4ff;
+    background: #1a1a1a;
+}
+}
 .stTabs [data-baseweb="tab-highlight"] {
     background: #00d4ff;
 }
@@ -390,19 +419,22 @@ st.markdown("""
 
 
 # =============================================================
-# TABS
+# NAVIGATION
 # =============================================================
 
-tab_dashboard, tab_like, tab_follow, tab_unfollow, tab_settings = st.tabs([
-    "DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "SETTINGS"
-])
+page = st.radio(
+    "Navigation",
+    ["DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "SETTINGS"],
+    horizontal=True,
+    label_visibility="collapsed",
+)
 
 
 # =============================================================
 # DASHBOARD TAB
 # =============================================================
 
-with tab_dashboard:
+if page == "DASHBOARD":
     # Get configured accounts
     valid_accounts = [
         a for a in st.session_state.accounts
@@ -561,7 +593,7 @@ with tab_dashboard:
 # LIKE TAB
 # =============================================================
 
-with tab_like:
+if page == "LIKE":
     st.markdown("""
     <div style="margin-bottom:20px">
         <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Like Bot</span>
@@ -698,7 +730,7 @@ with tab_like:
 # FOLLOW TAB (Placeholder)
 # =============================================================
 
-with tab_follow:
+if page == "FOLLOW":
     st.markdown("""
     <div style="margin-bottom:20px">
         <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Follow Bot</span>
@@ -874,7 +906,7 @@ with tab_follow:
 # UNFOLLOW TAB (Placeholder)
 # =============================================================
 
-with tab_unfollow:
+if page == "UNFOLLOW":
     st.markdown("""
     <div style="margin-bottom:20px">
         <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Unfollow Bot</span>
@@ -1059,7 +1091,7 @@ with tab_unfollow:
 # SETTINGS TAB
 # =============================================================
 
-with tab_settings:
+if page == "SETTINGS":
     st.markdown("""
     <div style="margin-bottom:20px">
         <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Account Configuration</span>
