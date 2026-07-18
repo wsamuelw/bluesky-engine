@@ -375,8 +375,8 @@ st.markdown("""
 # TABS
 # =============================================================
 
-tab_settings, tab_dashboard, tab_like, tab_follow, tab_unfollow = st.tabs([
-    "SETTINGS", "DASHBOARD", "LIKE BOT", "FOLLOW BOT", "UNFOLLOW BOT"
+tab_dashboard, tab_like, tab_follow, tab_unfollow, tab_settings = st.tabs([
+    "DASHBOARD", "LIKE BOT", "FOLLOW BOT", "UNFOLLOW BOT", "SETTINGS"
 ])
 
 
