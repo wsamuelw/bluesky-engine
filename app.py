@@ -4,13 +4,12 @@ Streamlit app for managing Bluesky follow/like/unfollow bots.
 """
 
 import streamlit as st
-import asyncio
 import time
 from datetime import datetime
 
 from utils.auth import login
 from utils.stats import get_stats
-from bots.like_bot import run_all as run_like_bot
+from bots.like_bot import like_bot_run
 
 # =============================================================
 # PAGE CONFIG
@@ -513,31 +512,27 @@ with tab_like:
             st.session_state.bot_running = True
             st.session_state.log_lines = []
 
-            # Update status to live
-            st.markdown("""
-            <script>
-            document.getElementById('log-status').textContent = 'RUNNING';
-            document.getElementById('log-status').className = 'status live';
-            </script>
-            """, unsafe_allow_html=True)
+            # Callback to update log display in real-time
+            def log_callback(line):
+                st.session_state.log_lines.append(line)
+                log_text = "\n".join(st.session_state.log_lines[-50:])
+                log_placeholder.code(log_text, language="bash")
 
-            # Run the bot and stream logs
-            async def run_and_stream():
-                async for line in run_like_bot(
+            # Run the bot (synchronous)
+            try:
+                like_bot_run(
                     valid_accounts,
                     batch_size,
                     likes_per_user,
                     delay_min,
                     delay_max,
-                ):
-                    st.session_state.log_lines.append(line)
-                    # Update log display
-                    log_text = "\n".join(st.session_state.log_lines[-50:])  # Last 50 lines
-                    log_placeholder.code(log_text, language="bash")
+                    log_callback=log_callback,
+                )
+                st.success("Like bot run complete!")
+            except Exception as e:
+                st.error(f"Bot error: {e}")
 
-            asyncio.run(run_and_stream())
             st.session_state.bot_running = False
-            st.success("Like bot run complete!")
     else:
         # Show existing log or placeholder
         if st.session_state.log_lines:

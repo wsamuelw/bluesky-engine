@@ -1,15 +1,15 @@
 """
 Like Bot — likes posts from non-followers.
 
-Extracted from like_bot.md, refactored to yield log lines
-instead of printing (for Streamlit live display).
+Uses synchronous atproto client for Streamlit compatibility.
+Passes a callback function for live log updates.
 """
 
 import random
-import asyncio
+import time
 from datetime import datetime
 
-from atproto import AsyncClient
+from atproto import Client
 
 
 def ts() -> str:
@@ -17,121 +17,128 @@ def ts() -> str:
     return datetime.now().strftime("%H:%M:%S")
 
 
-async def like_user_posts(client, user_did, user_handle, max_likes, delay_min, delay_max):
+def like_bot_run(accounts, batch_size, likes_per_user, delay_min, delay_max, log_callback=None):
     """
-    Like 1-2 recent posts from a single user.
+    Run like bot on all enabled accounts.
 
-    Yields log lines for Streamlit display.
-    Returns number of posts liked.
+    Args:
+        accounts: list of account dicts with handle, password, enabled
+        batch_size: max non-followers to like per account
+        likes_per_user: how many posts to like per person
+        delay_min: min seconds between likes
+        delay_max: max seconds between likes
+        log_callback: function to call with each log line (for live display)
+
+    Returns:
+        list of result dicts
     """
-    liked = 0
+    def log(line):
+        if log_callback:
+            log_callback(line)
 
-    try:
-        feed = await client.app.bsky.feed.get_author_feed({
-            "actor": user_did,
-            "limit": 5
-        })
+    enabled = [a for a in accounts if a.get("enabled", True)]
 
-        if not feed.feed:
-            yield f"[{ts()}] SKIP @{user_handle} — no posts"
-            return
+    log("=" * 55)
+    log(f"STARTING {len(enabled)} ACCOUNTS")
+    log("=" * 55)
 
-        # Grab extra posts in case some fail, shuffle for randomness
-        posts = feed.feed[:max_likes + 2]
-        random.shuffle(posts)
-        posts = posts[:max_likes]
+    results = []
 
-        for item in posts:
-            try:
-                await client.like(item.post.uri, item.post.cid)
-                liked += 1
-                delay = random.uniform(delay_min, delay_max)
-                await asyncio.sleep(delay)
-            except Exception as e:
-                err = str(e).lower()
-                if "already" in err:
-                    pass  # already liked, skip
-                else:
-                    yield f"[{ts()}] ERR  liking post: {str(e)[:60]}"
+    for acc in enabled:
+        result = _run_single_account(acc, batch_size, likes_per_user, delay_min, delay_max, log_callback)
+        results.append(result)
 
-    except Exception as e:
-        yield f"[{ts()}] ERR  fetching posts for @{user_handle}: {str(e)[:60]}"
+    # Summary
+    log("")
+    log("=" * 55)
+    log("COMPLETE")
+    log("=" * 55)
 
-    return liked
+    total_liked = 0
+    total_skipped = 0
+    total_errors = 0
+
+    for r in results:
+        log(f"  @{r['handle']}: {r['liked']} liked, {r['skipped']} skipped, {r['errors']} errors")
+        total_liked += r["liked"]
+        total_skipped += r["skipped"]
+        total_errors += r["errors"]
+
+    log("")
+    log(f"  TOTAL: {total_liked} liked, {total_skipped} skipped, {total_errors} errors")
+    log(f"  Finished at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+    return results
 
 
-async def like_non_followers(account, batch_size, likes_per_user, delay_min, delay_max):
+def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_max, log_callback=None):
     """
-    Main like loop for a single account.
+    Run like bot for a single account.
 
-    Steps:
-    1. Login
-    2. Pull following list
-    3. Pull followers list
-    4. Find non-followers (following - followers)
-    5. Randomly sample batch_size users
-    6. Like 1-2 posts from each
-
-    Yields log lines for Streamlit display.
-    Returns results dict.
+    Returns:
+        dict with handle, liked, skipped, errors
     """
+    def log(line):
+        if log_callback:
+            log_callback(line)
+
     handle = account["handle"]
     password = account["password"]
 
     # Login
     try:
-        client = AsyncClient()
-        profile = await client.login(handle, password)
-        yield f"[{ts()}] OK   [{handle}] Authenticated"
+        client = Client()
+        client.login(handle, password)
+        log(f"[{ts()}] OK   [{handle}] Authenticated")
     except Exception as e:
-        yield f"[{ts()}] ERR  [{handle}] Auth failed: {e}"
+        log(f"[{ts()}] ERR  [{handle}] Auth failed: {e}")
         return {"handle": handle, "liked": 0, "skipped": 0, "errors": 1}
 
     # Pull following
-    yield f"[{ts()}] INFO [{handle}] Pulling following list..."
+    log(f"[{ts()}] INFO [{handle}] Pulling following list...")
     following = set()
     cursor = None
     while True:
         params = {"actor": handle, "limit": 100}
         if cursor:
             params["cursor"] = cursor
-        result = await client.app.bsky.graph.get_follows(params)
+        result = client.app.bsky.graph.get_follows(params)
         for user in result.follows:
             following.add(user.did)
         cursor = result.cursor
         if not cursor:
             break
-    yield f"[{ts()}] OK   [{handle}] Following {len(following)} accounts"
+    log(f"[{ts()}] OK   [{handle}] Following {len(following)} accounts")
 
     # Pull followers
-    yield f"[{ts()}] INFO [{handle}] Pulling followers list..."
+    log(f"[{ts()}] INFO [{handle}] Pulling followers list...")
     followers = set()
     cursor = None
     while True:
         params = {"actor": handle, "limit": 100}
         if cursor:
             params["cursor"] = cursor
-        result = await client.app.bsky.graph.get_followers(params)
+        result = client.app.bsky.graph.get_followers(params)
         for user in result.followers:
             followers.add(user.did)
         cursor = result.cursor
         if not cursor:
             break
-    yield f"[{ts()}] OK   [{handle}] {len(followers)} followers"
+    log(f"[{ts()}] OK   [{handle}] {len(followers)} followers")
 
     # Find non-followers
     non_followers = following - followers
-    yield f"[{ts()}] OK   [{handle}] {len(non_followers)} non-followers"
+    log(f"[{ts()}] OK   [{handle}] {len(non_followers)} non-followers")
 
     if not non_followers:
-        yield f"[{ts()}] WARN [{handle}] No non-followers. Skipping."
+        log(f"[{ts()}] WARN [{handle}] No non-followers. Skipping.")
         return {"handle": handle, "liked": 0, "skipped": 0, "errors": 0}
 
     # Random sample
     sample = list(non_followers)
     random.shuffle(sample)
     sample = sample[:batch_size]
-    yield f"[{ts()}] OK   [{handle}] Randomly selected {len(sample)} users to like"
+    log(f"[{ts()}] OK   [{handle}] Randomly selected {len(sample)} users to like")
 
     # Like loop
     liked = 0
@@ -141,79 +148,72 @@ async def like_non_followers(account, batch_size, likes_per_user, delay_min, del
     for i, user_did in enumerate(sample):
         # Fetch handle for logging
         try:
-            profile_info = await client.app.bsky.actor.get_profile({"actor": user_did})
+            profile_info = client.app.bsky.actor.get_profile({"actor": user_did})
             user_handle = profile_info.handle
         except:
             user_handle = user_did[:20] + "..."
 
         try:
-            l = await like_user_posts(
-                client, user_did, user_handle,
-                max_likes=likes_per_user,
-                delay_min=delay_min,
-                delay_max=delay_max
-            )
-            if l and l > 0:
+            l = _like_user_posts(client, user_did, user_handle, likes_per_user, delay_min, delay_max, log_callback)
+            if l > 0:
                 liked += l
-                yield f"[{ts()}] OK   [{handle}] [{i+1}/{len(sample)}] Liked {l} posts from @{user_handle}"
+                log(f"[{ts()}] OK   [{handle}] [{i+1}/{len(sample)}] Liked {l} posts from @{user_handle}")
             else:
                 skipped += 1
         except Exception as e:
             errors += 1
-            yield f"[{ts()}] ERR  [{handle}] @{user_handle}: {str(e)[:60]}"
+            log(f"[{ts()}] ERR  [{handle}] @{user_handle}: {str(e)[:60]}")
 
         # Delay between users
         if i < len(sample) - 1:
             delay = random.uniform(delay_min, delay_max)
-            await asyncio.sleep(delay)
+            time.sleep(delay)
 
     return {"handle": handle, "liked": liked, "skipped": skipped, "errors": errors}
 
 
-async def run_all(accounts, batch_size, likes_per_user, delay_min, delay_max):
+def _like_user_posts(client, user_did, user_handle, max_likes, delay_min, delay_max, log_callback=None):
     """
-    Run like bot on all enabled accounts in parallel.
+    Like 1-2 recent posts from a single user.
 
-    Yields log lines for Streamlit display.
-    Returns list of result dicts.
+    Returns:
+        int: number of posts liked
     """
-    enabled = [a for a in accounts if a.get("enabled", True)]
+    def log(line):
+        if log_callback:
+            log_callback(line)
 
-    yield "=" * 55
-    yield f"STARTING {len(enabled)} ACCOUNTS"
-    yield "=" * 55
+    liked = 0
 
-    # Run all accounts concurrently
-    # Note: we collect results from generators
-    results = []
-    for acc in enabled:
-        result = None
-        async for line in like_non_followers(acc, batch_size, likes_per_user, delay_min, delay_max):
-            if isinstance(line, dict):
-                result = line
-            else:
-                yield line
-        if result:
-            results.append(result)
+    try:
+        feed = client.app.bsky.feed.get_author_feed({
+            "actor": user_did,
+            "limit": 5
+        })
 
-    # Summary
-    yield ""
-    yield "=" * 55
-    yield "COMPLETE"
-    yield "=" * 55
+        if not feed.feed:
+            log(f"[{ts()}] SKIP @{user_handle} — no posts")
+            return 0
 
-    total_liked = 0
-    total_skipped = 0
-    total_errors = 0
+        # Grab extra posts in case some fail, shuffle for randomness
+        posts = feed.feed[:max_likes + 2]
+        random.shuffle(posts)
+        posts = posts[:max_likes]
 
-    for r in results:
-        yield f"  @{r['handle']}: {r['liked']} liked, {r['skipped']} skipped, {r['errors']} errors"
-        total_liked += r["liked"]
-        total_skipped += r["skipped"]
-        total_errors += r["errors"]
+        for item in posts:
+            try:
+                client.like(item.post.uri, item.post.cid)
+                liked += 1
+                delay = random.uniform(delay_min, delay_max)
+                time.sleep(delay)
+            except Exception as e:
+                err = str(e).lower()
+                if "already" in err:
+                    pass  # already liked, skip
+                else:
+                    log(f"[{ts()}] ERR  liking post: {str(e)[:60]}")
 
-    yield ""
-    yield f"  TOTAL: {total_liked} liked, {total_skipped} skipped, {total_errors} errors"
-    yield f"  Finished at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    except Exception as e:
+        log(f"[{ts()}] ERR  fetching posts for @{user_handle}: {str(e)[:60]}")
 
-    return results
+    return liked
