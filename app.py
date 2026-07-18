@@ -203,7 +203,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 /* Buttons */
 .stButton > button {
     background: #00d4ff;
-    color: #0a0a0a;
+    color: #0a0a0a !important;
     border: none;
     padding: 10px 24px;
     font-family: 'JetBrains Mono', monospace;
