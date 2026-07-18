@@ -370,6 +370,10 @@ if "follow_log_lines" not in st.session_state:
 if "unfollow_log_lines" not in st.session_state:
     st.session_state.unfollow_log_lines = []
 
+# Verification results
+if "verification_results" not in st.session_state:
+    st.session_state.verification_results = []
+
 
 # =============================================================
 # HEADER
@@ -1049,7 +1053,7 @@ with tab_settings:
 
     # Account inputs
     for i in range(5):
-        col1, col2, col3 = st.columns([3, 3, 1])
+        col1, col2, col3, col4 = st.columns([3, 3, 1, 1])
 
         with col1:
             handle = st.text_input(
@@ -1078,10 +1082,21 @@ with tab_settings:
             )
             st.session_state.accounts[i]["enabled"] = enabled
 
+        with col4:
+            # Show verification status
+            if i < len(st.session_state.verification_results):
+                result = st.session_state.verification_results[i]
+                if result["status"] == "ok":
+                    st.markdown("✅")
+                elif result["status"] == "error":
+                    st.markdown("❌")
+                else:
+                    st.markdown("—")
+            else:
+                st.markdown("—")
+
     # Save button with auth verification
     if st.button("SAVE & VERIFY ACCOUNTS", key="save_accounts"):
-        st.session_state.log_lines = []  # Clear any previous logs
-
         results = []
         for i, acc in enumerate(st.session_state.accounts):
             handle = acc.get("handle", "").strip()
@@ -1106,8 +1121,11 @@ with tab_settings:
                     "index": i+1,
                     "handle": handle,
                     "status": "error",
-                    "msg": str(e)[:80]
+                    "msg": str(e)[:200]
                 })
+
+        # Store results in session state
+        st.session_state.verification_results = results
 
         # Display results
         for r in results:
