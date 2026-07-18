@@ -78,18 +78,18 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     background: transparent;
 }
 .stTabs [aria-selected="true"] {
-    color: #00d4ff;
-    background: transparent;
+    color: #00d4ff !important;
+    background: transparent !important;
 }
 .stTabs [data-baseweb="tab-border"] {
-    display: none;
+    display: none !important;
 }
 .stTabs [data-baseweb="tab-highlight"] {
-    display: none;
+    display: none !important;
+    background: transparent !important;
 }
-.topbar .nav-link:hover {
-    color: #c8c8c8;
-    background: #1a1a1a;
+.stTabs [data-baseweb="tab-highlight"] > div {
+    background: transparent !important;
 }
 
 /* Ticker strip */
@@ -334,27 +334,7 @@ header {visibility: hidden;}
 .stDeployButton {display: none;}
 
 /* Tabs */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 0;
-    background: #111;
-    border: 1px solid #222;
-    border-radius: 2px;
-}
-.stTabs [data-baseweb="tab"] {
-    color: #888;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    padding: 10px 20px;
-}
-.stTabs [aria-selected="true"] {
-    color: #00d4ff;
-    background: #1a1a1a;
-}
-.stTabs [data-baseweb="tab-border"] {
-    display: none;
-}
+/* Duplicate tab styles removed - using the first set */
 
 /* Radio navigation */
 .stRadio > div {
