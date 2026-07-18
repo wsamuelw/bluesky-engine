@@ -9,6 +9,7 @@ from datetime import datetime
 
 from utils.auth import login
 from utils.stats import get_stats
+from utils.tracker import load_history, save_snapshot, get_chart_data
 from bots.like_bot import like_bot_run
 
 # =============================================================
@@ -397,6 +398,14 @@ with tab_dashboard:
     else:
         ratio_str = "N/A"
 
+    # Save today's snapshot (if we have data)
+    if total_followers > 0:
+        save_snapshot(total_followers, total_following)
+
+    # Load history for chart
+    history = load_history()
+    chart_data = get_chart_data(history)
+
     # Ticker strip — real stats
     st.markdown(f"""
     <div class="ticker">
@@ -439,23 +448,49 @@ with tab_dashboard:
                         delta=f"{stats['following']:,} following · {stats['ratio']} ratio"
                     )
 
-    # Growth chart placeholder
+    # Growth chart
     col1, col2 = st.columns(2)
 
     with col1:
         st.markdown("""
-        <div class="panel">
-            <div class="panel-header">
-                <span class="title">Follower Growth — 30d</span>
-                <span class="status idle">NO DATA</span>
-            </div>
-            <div class="panel-body">
-                <div style="height:140px;display:flex;align-items:center;justify-content:center;color:#333;font-size:12px">
-                    Configure accounts to see growth chart
-                </div>
-            </div>
+        <div style="margin-top:20px;margin-bottom:10px">
+            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Follower Growth</span>
         </div>
         """, unsafe_allow_html=True)
+
+        if len(chart_data) >= 2:
+            # Show line chart with Streamlit
+            import pandas as pd
+            df = pd.DataFrame(chart_data)
+            df["date"] = pd.to_datetime(df["date"])
+            df = df.set_index("date")
+
+            st.line_chart(df[["followers"]], use_container_width=True)
+
+            # Show stats
+            first = chart_data[0]
+            last = chart_data[-1]
+            change = last["followers"] - first["followers"]
+            days = len(chart_data)
+
+            st.markdown(f"""
+            <div style="font-size:12px;color:#888;margin-top:8px">
+                {days} days tracked · {change:+,} followers · since {first['date']}
+            </div>
+            """, unsafe_allow_html=True)
+        elif len(chart_data) == 1:
+            st.markdown(f"""
+            <div style="padding:20px;text-align:center;color:#555;font-size:12px">
+                First snapshot saved today ({chart_data[0]['date']}).<br>
+                Come back tomorrow to see the growth chart.
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style="padding:20px;text-align:center;color:#333;font-size:12px">
+                No data yet. Configure accounts to start tracking.
+            </div>
+            """, unsafe_allow_html=True)
 
     with col2:
         st.markdown("""
