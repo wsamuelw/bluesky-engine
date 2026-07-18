@@ -11,6 +11,7 @@ from utils.auth import login
 from utils.stats import get_stats
 from utils.tracker import load_history, save_snapshot, get_chart_data
 from bots.like_bot import like_bot_run
+from bots.follow_bot import follow_bot_run
 
 # =============================================================
 # PAGE CONFIG
@@ -324,11 +325,11 @@ header {visibility: hidden;}
 
 if "accounts" not in st.session_state:
     st.session_state.accounts = [
-        {"handle": "", "password": "", "enabled": True},
-        {"handle": "", "password": "", "enabled": True},
-        {"handle": "", "password": "", "enabled": True},
-        {"handle": "", "password": "", "enabled": True},
-        {"handle": "", "password": "", "enabled": True},
+        {"handle": "", "password": "", "target": "", "enabled": True},
+        {"handle": "", "password": "", "target": "", "enabled": True},
+        {"handle": "", "password": "", "target": "", "enabled": True},
+        {"handle": "", "password": "", "target": "", "enabled": True},
+        {"handle": "", "password": "", "target": "", "enabled": True},
     ]
 
 if "bot_running" not in st.session_state:
@@ -616,19 +617,143 @@ with tab_like:
 
 with tab_follow:
     st.markdown("""
-    <div class="panel">
-        <div class="panel-header">
-            <span class="title">Follow Bot</span>
-            <span class="status idle">COMING SOON</span>
+    <div style="margin-bottom:20px">
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Follow Bot</span>
+        <br>
+        <span style="font-size:13px;color:#888">Copy followers from target accounts in your niche</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Account-target pairs
+    st.markdown("""
+    <div style="margin-bottom:10px">
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Account → Target</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    for i in range(5):
+        col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
+
+        with col1:
+            handle = st.text_input(
+                f"HANDLE {i+1}",
+                value=st.session_state.accounts[i].get("handle", ""),
+                placeholder="alice.bsky.social",
+                key=f"follow_handle_{i}",
+            )
+            st.session_state.accounts[i]["handle"] = handle
+
+        with col2:
+            password = st.text_input(
+                f"PASSWORD {i+1}",
+                value=st.session_state.accounts[i].get("password", ""),
+                type="password",
+                placeholder="xxxx-xxxx-xxxx-xxxx",
+                key=f"follow_password_{i}",
+            )
+            st.session_state.accounts[i]["password"] = password
+
+        with col3:
+            target = st.text_input(
+                f"TARGET {i+1}",
+                value=st.session_state.accounts[i].get("target", ""),
+                placeholder="karpathy.bsky.social",
+                key=f"follow_target_{i}",
+            )
+            st.session_state.accounts[i]["target"] = target
+
+        with col4:
+            enabled = st.checkbox(
+                "ON",
+                value=st.session_state.accounts[i].get("enabled", True),
+                key=f"follow_enabled_{i}",
+            )
+            st.session_state.accounts[i]["enabled"] = enabled
+
+    # Config
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        pull_limit = st.number_input("PULL LIMIT", min_value=10, max_value=500, value=200, step=10)
+    with col2:
+        daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=200, value=75, step=5)
+    with col3:
+        follow_delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=5, step=1, key="follow_delay_min")
+    with col4:
+        follow_delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=15, step=1, key="follow_delay_max")
+
+    auto_like = st.checkbox("Auto-like posts after following", value=True)
+
+    # Run button
+    col_btn, col_info = st.columns([1, 3])
+
+    with col_btn:
+        follow_run_clicked = st.button("▶ RUN FOLLOW BOT", key="run_follow", use_container_width=True)
+
+    with col_info:
+        enabled_count = sum(1 for a in st.session_state.accounts if a.get("enabled") and a.get("handle") and a.get("target"))
+        st.markdown(f"""
+        <div style="padding:10px 0;font-size:12px;color:#555">
+            <strong style="color:#c8c8c8">{enabled_count} accounts</strong> configured ·
+            pull={pull_limit} · cap={daily_cap} · delay={follow_delay_min}-{follow_delay_max}s
         </div>
-        <div class="panel-body">
-            <div style="text-align:center;padding:40px;color:#333;font-size:13px">
-                Follow bot will be available in Phase 2.<br>
-                Use the Colab notebook for now: <code>bluesky_bot.md</code>
-            </div>
+        """, unsafe_allow_html=True)
+
+    # Live log
+    st.markdown("""
+    <div class="panel" style="margin-top:20px">
+        <div class="panel-header">
+            <span class="title">Live Output</span>
+            <span class="status idle">IDLE</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+    follow_log_placeholder = st.empty()
+
+    # Run the bot
+    if follow_run_clicked:
+        # Validate accounts
+        valid_accounts = [
+            a for a in st.session_state.accounts
+            if a.get("enabled") and a.get("handle") and a.get("password") and a.get("target")
+        ]
+
+        if not valid_accounts:
+            st.error("No valid accounts configured. Add handle, password, and target for at least one account.")
+        else:
+            st.session_state.bot_running = True
+            st.session_state.log_lines = []
+
+            # Callback to update log display
+            def follow_log_callback(line):
+                st.session_state.log_lines.append(line)
+                log_text = "\n".join(st.session_state.log_lines[-50:])
+                follow_log_placeholder.code(log_text, language="bash")
+
+            # Run the bot
+            try:
+                follow_bot_run(
+                    valid_accounts,
+                    pull_limit,
+                    daily_cap,
+                    follow_delay_min,
+                    follow_delay_max,
+                    auto_like,
+                    log_callback=follow_log_callback,
+                )
+                st.success("Follow bot run complete!")
+            except Exception as e:
+                st.error(f"Bot error: {e}")
+
+            st.session_state.bot_running = False
+    else:
+        # Show existing log or placeholder
+        if st.session_state.log_lines:
+            log_text = "\n".join(st.session_state.log_lines[-50:])
+            follow_log_placeholder.code(log_text, language="bash")
+        else:
+            follow_log_placeholder.code("Waiting to start...", language="bash")
 
 
 # =============================================================
