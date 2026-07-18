@@ -53,35 +53,39 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 }
 
 /* Topbar */
-.topbar {
+/* Tabs - matches mockup 6-terminal.html */
+.stTabs [data-baseweb="tab-list"] {
     background: #111;
-    border-bottom: 1px solid #222;
-    padding: 12px 20px;
+    border: 1px solid #222;
+    border-radius: 0;
+    padding: 10px 20px;
     margin: -2rem -2rem 2rem -2rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    gap: 0;
 }
-.topbar .brand {
-    color: #00d4ff;
-    font-size: 16px;
-    font-weight: 700;
-    font-family: 'JetBrains Mono', monospace;
-}
-.topbar .brand span { color: #555; }
-.topbar .nav-links {
-    display: flex;
-    gap: 4px;
-}
-.topbar .nav-link {
+.stTabs [data-baseweb="tab"] {
     color: #555;
-    font-size: 12px;
     font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 1px;
     padding: 8px 16px;
-    border-radius: 2px;
-    cursor: pointer;
+    margin-left: 20px;
+    border-radius: 0;
+    background: transparent;
+}
+.stTabs [data-baseweb="tab"]:hover {
+    color: #c8c8c8;
+    background: transparent;
+}
+.stTabs [aria-selected="true"] {
+    color: #00d4ff;
+    background: transparent;
+}
+.stTabs [data-baseweb="tab-border"] {
+    display: none;
+}
+.stTabs [data-baseweb="tab-highlight"] {
+    display: none;
 }
 .topbar .nav-link:hover {
     color: #c8c8c8;
@@ -423,40 +427,19 @@ if "verification_results" not in st.session_state:
 
 
 # =============================================================
-# HEADER
+# NAVIGATION (functional tabs)
 # =============================================================
 
-st.markdown("""
-<div class="topbar">
-    <div class="brand">bsky_growth <span>v1.0</span></div>
-    <div class="nav-links">
-        <span class="nav-link" data-page="DASHBOARD">DASHBOARD</span>
-        <span class="nav-link" data-page="LIKE">LIKE</span>
-        <span class="nav-link" data-page="FOLLOW">FOLLOW</span>
-        <span class="nav-link" data-page="UNFOLLOW">UNFOLLOW</span>
-        <span class="nav-link" data-page="SETTINGS">SETTINGS</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-
-# =============================================================
-# NAVIGATION
-# =============================================================
-
-page = st.radio(
-    "Navigation",
-    ["DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "SETTINGS"],
-    horizontal=True,
-    label_visibility="collapsed",
-)
+tab_dashboard, tab_like, tab_follow, tab_unfollow, tab_settings = st.tabs([
+    "DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "SETTINGS"
+])
 
 
 # =============================================================
 # DASHBOARD TAB
 # =============================================================
 
-if page == "DASHBOARD":
+with tab_dashboard:
     # Get configured accounts
     valid_accounts = [
         a for a in st.session_state.accounts
@@ -615,7 +598,7 @@ if page == "DASHBOARD":
 # LIKE TAB
 # =============================================================
 
-if page == "LIKE":
+with tab_like:
     st.markdown("""
     <div style="margin-bottom:20px">
         <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Like Bot</span>
@@ -752,7 +735,7 @@ if page == "LIKE":
 # FOLLOW TAB (Placeholder)
 # =============================================================
 
-if page == "FOLLOW":
+with tab_follow:
     st.markdown("""
     <div style="margin-bottom:20px">
         <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Follow Bot</span>
@@ -928,7 +911,7 @@ if page == "FOLLOW":
 # UNFOLLOW TAB (Placeholder)
 # =============================================================
 
-if page == "UNFOLLOW":
+with tab_unfollow:
     st.markdown("""
     <div style="margin-bottom:20px">
         <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Unfollow Bot</span>
@@ -1113,7 +1096,7 @@ if page == "UNFOLLOW":
 # SETTINGS TAB
 # =============================================================
 
-if page == "SETTINGS":
+with tab_settings:
     st.markdown("""
     <div style="margin-bottom:20px">
         <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Account Configuration</span>
