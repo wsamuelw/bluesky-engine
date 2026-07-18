@@ -651,7 +651,7 @@ with tab_like:
                 # Run the bot with spinner
                 with st.spinner("Running Like Bot..."):
                     try:
-                        like_bot_run(
+                        results = like_bot_run(
                             configured_accounts,
                             batch_size,
                             likes_per_user,
@@ -659,7 +659,11 @@ with tab_like:
                             delay_max,
                             log_callback=log_callback,
                         )
-                        st.success("Like bot run complete!")
+                        # Show summary
+                        total_liked = sum(r["liked"] for r in results)
+                        total_skipped = sum(r["skipped"] for r in results)
+                        total_errors = sum(r["errors"] for r in results)
+                        st.success(f"Like bot complete: {total_liked} liked, {total_skipped} skipped, {total_errors} errors")
                     except Exception as e:
                         error_msg = str(e).lower()
                         if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
@@ -811,7 +815,7 @@ with tab_follow:
                     # Run the bot with spinner
                     with st.spinner("Running Follow Bot..."):
                         try:
-                            follow_bot_run(
+                            results = follow_bot_run(
                                 valid_accounts,
                                 pull_limit,
                                 daily_cap,
@@ -820,7 +824,11 @@ with tab_follow:
                                 auto_like,
                                 log_callback=follow_log_callback,
                             )
-                            st.success("Follow bot run complete!")
+                            # Show summary
+                            total_followed = sum(r["followed"] for r in results)
+                            total_liked = sum(r["liked"] for r in results)
+                            total_errors = sum(r["errors"] for r in results)
+                            st.success(f"Follow bot complete: {total_followed} followed, {total_liked} liked, {total_errors} errors")
                         except Exception as e:
                             error_msg = str(e).lower()
                             if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
@@ -991,7 +999,7 @@ with tab_unfollow:
                 # Run the bot with spinner
                 with st.spinner("Running Unfollow Bot..."):
                     try:
-                        unfollow_bot_run(
+                        results = unfollow_bot_run(
                             configured_accounts,
                             days_threshold,
                             daily_cap,
@@ -1000,7 +1008,11 @@ with tab_unfollow:
                             exemptions,
                             log_callback=unfollow_log_callback,
                         )
-                        st.success("Unfollow bot run complete!")
+                        # Show summary
+                        total_unfollowed = sum(r["unfollowed"] for r in results)
+                        total_skipped = sum(r["skipped"] for r in results)
+                        total_errors = sum(r["errors"] for r in results)
+                        st.success(f"Unfollow bot complete: {total_unfollowed} unfollowed, {total_skipped} skipped, {total_errors} errors")
                     except Exception as e:
                         error_msg = str(e).lower()
                         if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
