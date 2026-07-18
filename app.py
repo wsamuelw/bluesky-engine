@@ -615,19 +615,20 @@ with tab_like:
                     log_text = "\n".join(st.session_state.like_log_lines[-50:])
                     log_placeholder.code(log_text, language="bash")
 
-                # Run the bot (synchronous)
-                try:
-                    like_bot_run(
-                        configured_accounts,
-                        batch_size,
-                        likes_per_user,
-                        delay_min,
-                        delay_max,
-                        log_callback=log_callback,
-                    )
-                    st.success("Like bot run complete!")
-                except Exception as e:
-                    st.error(f"Bot error: {e}")
+                # Run the bot with spinner
+                with st.spinner("Running Like Bot..."):
+                    try:
+                        like_bot_run(
+                            configured_accounts,
+                            batch_size,
+                            likes_per_user,
+                            delay_min,
+                            delay_max,
+                            log_callback=log_callback,
+                        )
+                        st.success("Like bot run complete!")
+                    except Exception as e:
+                        st.error(f"Bot error: {e}")
 
                 st.session_state.bot_running = False
         else:
@@ -766,20 +767,21 @@ with tab_follow:
                         log_text = "\n".join(st.session_state.follow_log_lines[-50:])
                         follow_log_placeholder.code(log_text, language="bash")
 
-                    # Run the bot
-                    try:
-                        follow_bot_run(
-                            valid_accounts,
-                            pull_limit,
-                            daily_cap,
-                            follow_delay_min,
-                            follow_delay_max,
-                            auto_like,
-                            log_callback=follow_log_callback,
-                        )
-                        st.success("Follow bot run complete!")
-                    except Exception as e:
-                        st.error(f"Bot error: {e}")
+                    # Run the bot with spinner
+                    with st.spinner("Running Follow Bot..."):
+                        try:
+                            follow_bot_run(
+                                valid_accounts,
+                                pull_limit,
+                                daily_cap,
+                                follow_delay_min,
+                                follow_delay_max,
+                                auto_like,
+                                log_callback=follow_log_callback,
+                            )
+                            st.success("Follow bot run complete!")
+                        except Exception as e:
+                            st.error(f"Bot error: {e}")
 
                 st.session_state.bot_running = False
         else:
@@ -937,20 +939,21 @@ with tab_unfollow:
                     log_text = "\n".join(st.session_state.unfollow_log_lines[-50:])
                     unfollow_log_placeholder.code(log_text, language="bash")
 
-                # Run the bot
-                try:
-                    unfollow_bot_run(
-                        configured_accounts,
-                        days_threshold,
-                        daily_cap,
-                        unfollow_delay_min,
-                        unfollow_delay_max,
-                        exemptions,
-                        log_callback=unfollow_log_callback,
-                    )
-                    st.success("Unfollow bot run complete!")
-                except Exception as e:
-                    st.error(f"Bot error: {e}")
+                # Run the bot with spinner
+                with st.spinner("Running Unfollow Bot..."):
+                    try:
+                        unfollow_bot_run(
+                            configured_accounts,
+                            days_threshold,
+                            daily_cap,
+                            unfollow_delay_min,
+                            unfollow_delay_max,
+                            exemptions,
+                            log_callback=unfollow_log_callback,
+                        )
+                        st.success("Unfollow bot run complete!")
+                    except Exception as e:
+                        st.error(f"Bot error: {e}")
 
             st.session_state.bot_running = False
         else:
