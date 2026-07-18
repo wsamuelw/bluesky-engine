@@ -80,6 +80,8 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 .stTabs [aria-selected="true"] {
     color: #00d4ff !important;
     background: transparent !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
 }
 .stTabs [data-baseweb="tab-border"] {
     display: none !important;
@@ -88,23 +90,39 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     display: none !important;
     background: transparent !important;
     height: 0 !important;
+    border: none !important;
 }
 .stTabs [data-baseweb="tab-highlight"] > div {
     background: transparent !important;
     height: 0 !important;
+    border: none !important;
 }
-/* Additional selectors for Streamlit's tab underline */
+/* Remove all possible underline effects */
 .stTabs div[role="tab"][aria-selected="true"]::after {
     display: none !important;
+    background: transparent !important;
+    height: 0 !important;
 }
 .stTabs div[role="tab"][aria-selected="true"]::before {
     display: none !important;
+    background: transparent !important;
+    height: 0 !important;
 }
 .stTabs div[role="tab"]::after {
     display: none !important;
 }
 .stTabs div[role="tab"]::before {
     display: none !important;
+}
+/* Target any possible highlight elements */
+.stTabs [data-baseweb="tab-highlight"],
+.stTabs [data-baseweb="tab-highlight"] > div,
+.stTabs [data-baseweb="tab-highlight"] > div > div {
+    display: none !important;
+    background: transparent !important;
+    height: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
 }
 
 /* Ticker strip */
