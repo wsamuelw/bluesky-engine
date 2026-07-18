@@ -453,7 +453,7 @@ with tab_dashboard:
             """, unsafe_allow_html=True)
 
         except Exception as e:
-            st.error(f"Failed to fetch stats for @{selected_account['handle']}: {str(e)[:80]}")
+            st.error(f"Failed to fetch stats for @{selected_account['handle']}: {str(e)[:200]}")
 
     # Load history for chart
     history = load_history()

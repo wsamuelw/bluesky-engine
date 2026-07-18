@@ -162,7 +162,7 @@ def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_ma
                 skipped += 1
         except Exception as e:
             errors += 1
-            log(f"[{ts()}] ERR  [{handle}] @{user_handle}: {str(e)[:60]}")
+            log(f"[{ts()}] ERR  [{handle}] @{user_handle}: {str(e)[:200]}")
 
         # Delay between users
         if i < len(sample) - 1:
@@ -211,9 +211,9 @@ def _like_user_posts(client, user_did, user_handle, max_likes, delay_min, delay_
                 if "already" in err:
                     pass  # already liked, skip
                 else:
-                    log(f"[{ts()}] ERR  liking post: {str(e)[:60]}")
+                    log(f"[{ts()}] ERR  liking post: {str(e)[:200]}")
 
     except Exception as e:
-        log(f"[{ts()}] ERR  fetching posts for @{user_handle}: {str(e)[:60]}")
+        log(f"[{ts()}] ERR  fetching posts for @{user_handle}: {str(e)[:200]}")
 
     return liked

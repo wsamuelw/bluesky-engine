@@ -204,7 +204,7 @@ def _run_single_account(account, days_threshold, daily_cap, delay_min, delay_max
             log(f"[{ts()}] OK   [{handle}] [{unfollowed}/{len(to_unfollow)}] Unfollowed @{user_handle}")
         except Exception as e:
             errors += 1
-            log(f"[{ts()}] ERR  [{handle}] @{user_handle}: {str(e)[:60]}")
+            log(f"[{ts()}] ERR  [{handle}] @{user_handle}: {str(e)[:200]}")
             if "rate" in str(e).lower() or "429" in str(e):
                 log(f"[{ts()}] WARN [{handle}] Rate limited. Pausing 60s...")
                 time.sleep(60)
