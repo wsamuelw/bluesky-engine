@@ -822,10 +822,10 @@ with tab_follow:
             follow_run_clicked = st.button("▶ RUN FOLLOW", key="run_follow", use_container_width=True)
 
         with col_info:
-            valid_count = sum(1 for a in configured_accounts if a.get("target"))
+            target_set = "✓" if st.session_state.target.strip() else "✗"
             st.markdown(f"""
             <div style="padding:10px 0;font-size:12px;color:#888">
-                <strong style="color:#c8c8c8">{valid_count} accounts</strong> with targets ·
+                target {target_set} ·
                 pull={pull_limit} · cap={daily_cap} · delay={follow_delay_min}-{follow_delay_max}s
             </div>
             """, unsafe_allow_html=True)
