@@ -709,9 +709,52 @@ with tab_settings:
             )
             st.session_state.accounts[i]["enabled"] = enabled
 
-    # Save button
-    if st.button("SAVE ACCOUNTS", key="save_accounts"):
-        st.success("Accounts saved to session.")
+    # Save button with auth verification
+    if st.button("SAVE & VERIFY ACCOUNTS", key="save_accounts"):
+        st.session_state.log_lines = []  # Clear any previous logs
+
+        results = []
+        for i, acc in enumerate(st.session_state.accounts):
+            handle = acc.get("handle", "").strip()
+            password = acc.get("password", "").strip()
+
+            if not handle or not password:
+                results.append({"index": i+1, "handle": handle or "empty", "status": "skip", "msg": "No credentials"})
+                continue
+
+            try:
+                from utils.auth import login
+                client = login(handle, password)
+                profile = client.app.bsky.actor.get_profile({"actor": handle})
+                results.append({
+                    "index": i+1,
+                    "handle": handle,
+                    "status": "ok",
+                    "msg": f"Authenticated as @{profile.handle} · {profile.followers_count or 0:,} followers"
+                })
+            except Exception as e:
+                results.append({
+                    "index": i+1,
+                    "handle": handle,
+                    "status": "error",
+                    "msg": str(e)[:80]
+                })
+
+        # Display results
+        for r in results:
+            if r["status"] == "ok":
+                st.success(f"Account {r['index']} @{r['handle']}: {r['msg']}")
+            elif r["status"] == "error":
+                st.error(f"Account {r['index']} @{r['handle']}: {r['msg']}")
+            else:
+                st.info(f"Account {r['index']}: {r['msg']}")
+
+        # Count successes
+        ok_count = sum(1 for r in results if r["status"] == "ok")
+        if ok_count > 0:
+            st.success(f"{ok_count} account(s) verified and ready to use.")
+        else:
+            st.warning("No accounts verified. Check your handles and app passwords.")
 
     # Instructions
     st.markdown("""
