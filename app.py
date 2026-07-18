@@ -88,7 +88,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     white-space: nowrap;
 }
 .ticker-item .label {
-    color: #555;
+    color: #888;
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -122,7 +122,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    color: #555;
+    color: #888;
     font-family: 'JetBrains Mono', monospace;
 }
 .panel-header .status {
@@ -155,9 +155,9 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     padding: 12px;
     border: 1px solid #222;
 }
-.log-output .time { color: #333; }
+.log-output .time { color: #666; }
 .log-output .ok { color: #00d4ff; }
-.log-output .info { color: #555; }
+.log-output .info { color: #888; }
 .log-output .err { color: #ff4444; }
 .log-output .skip { color: #ffaa00; }
 
@@ -172,7 +172,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     margin-top: 20px;
 }
 .action-bar .info {
-    color: #555;
+    color: #888;
     font-size: 12px;
     font-family: 'JetBrains Mono', monospace;
 }
@@ -283,7 +283,21 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 }
 .tag.active { background: #00d4ff22; color: #00d4ff; }
 .tag.paused { background: #ffaa0022; color: #ffaa00; }
-.tag.idle { background: #333; color: #666; }
+.tag.idle { background: #333; color: #aaa; }
+
+/* Streamlit alerts */
+.stAlert {
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 2px;
+    font-family: 'JetBrains Mono', monospace;
+}
+.stAlert > div {
+    color: #c8c8c8;
+}
+.stAlert [data-testid="stMarkdownContainer"] p {
+    color: #c8c8c8;
+}
 
 /* Hide Streamlit elements */
 #MainMenu {visibility: hidden;}
@@ -299,7 +313,7 @@ header {visibility: hidden;}
     border-radius: 2px;
 }
 .stTabs [data-baseweb="tab"] {
-    color: #555;
+    color: #888;
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
     text-transform: uppercase;
@@ -364,7 +378,7 @@ if "unfollow_log_lines" not in st.session_state:
 st.markdown("""
 <div class="topbar">
     <div class="brand">bsky_growth <span>v1.0</span></div>
-    <div style="color:#555;font-size:11px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:2px">
+    <div style="color:#888;font-size:11px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:2px">
         Bluesky Follower Growth Platform
     </div>
 </div>
@@ -451,7 +465,7 @@ with tab_dashboard:
     with col1:
         st.markdown("""
         <div style="margin-top:20px;margin-bottom:10px">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Follower Growth</span>
+            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Follower Growth</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -477,14 +491,14 @@ with tab_dashboard:
             """, unsafe_allow_html=True)
         elif len(chart_data) == 1:
             st.markdown(f"""
-            <div style="padding:20px;text-align:center;color:#555;font-size:12px">
+            <div style="padding:20px;text-align:center;color:#888;font-size:12px">
                 First snapshot saved today ({chart_data[0]['date']}).<br>
                 Come back tomorrow to see the growth chart.
             </div>
             """, unsafe_allow_html=True)
         else:
             st.markdown("""
-            <div style="padding:20px;text-align:center;color:#333;font-size:12px">
+            <div style="padding:20px;text-align:center;color:#666;font-size:12px">
                 No data yet. Configure accounts to start tracking.
             </div>
             """, unsafe_allow_html=True)
@@ -544,7 +558,7 @@ with tab_dashboard:
 with tab_like:
     st.markdown("""
     <div style="margin-bottom:20px">
-        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Like Bot</span>
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Like Bot</span>
         <br>
         <span style="font-size:13px;color:#888">Like posts from non-followers to trigger notifications</span>
     </div>
@@ -561,7 +575,7 @@ with tab_like:
     else:
         st.markdown("""
         <div style="margin-bottom:10px">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Connected Accounts</span>
+            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Connected Accounts</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -577,15 +591,17 @@ with tab_like:
         """, unsafe_allow_html=True)
 
         # Config
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
 
         with col1:
-            batch_size = st.number_input("BATCH SIZE", min_value=10, max_value=1000, value=200, step=10)
+            batch_size = st.number_input("BATCH SIZE", min_value=10, max_value=500, value=200, step=10)
         with col2:
             likes_per_user = st.number_input("LIKES PER USER", min_value=1, max_value=5, value=2, step=1)
         with col3:
-            delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=5, step=1)
+            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=1000, value=400, step=10, key="like_daily_cap")
         with col4:
+            delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=5, step=1)
+        with col5:
             delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=10, step=1)
 
         # Run button
@@ -596,9 +612,9 @@ with tab_like:
 
         with col_info:
             st.markdown(f"""
-            <div style="padding:10px 0;font-size:12px;color:#555">
+            <div style="padding:10px 0;font-size:12px;color:#888">
                 <strong style="color:#c8c8c8">{len(configured_accounts)} accounts</strong> connected ·
-                batch={batch_size} · delay={delay_min}-{delay_max}s ·
+                batch={batch_size} · daily cap={daily_cap} · delay={delay_min}-{delay_max}s ·
                 est. {int(batch_size * (delay_min + delay_max) / 2 / 60)} min
             </div>
             """, unsafe_allow_html=True)
@@ -662,7 +678,7 @@ with tab_like:
 with tab_follow:
     st.markdown("""
     <div style="margin-bottom:20px">
-        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Follow Bot</span>
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Follow Bot</span>
         <br>
         <span style="font-size:13px;color:#888">Copy followers from target accounts in your niche</span>
     </div>
@@ -680,7 +696,7 @@ with tab_follow:
         # Show accounts with target input
         st.markdown("""
         <div style="margin-bottom:10px">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Assign Target Accounts</span>
+            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Assign Target Accounts</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -696,7 +712,7 @@ with tab_follow:
 
             with col2:
                 st.markdown(f"""
-                <div style="padding:10px 0;font-size:14px;color:#555;text-align:center">
+                <div style="padding:10px 0;font-size:14px;color:#888;text-align:center">
                     →
                 </div>
                 """, unsafe_allow_html=True)
@@ -714,7 +730,7 @@ with tab_follow:
         # Config
         st.markdown("""
         <div style="margin-top:20px;margin-bottom:10px">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Bot Settings</span>
+            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Bot Settings</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -740,7 +756,7 @@ with tab_follow:
         with col_info:
             valid_count = sum(1 for a in configured_accounts if a.get("target"))
             st.markdown(f"""
-            <div style="padding:10px 0;font-size:12px;color:#555">
+            <div style="padding:10px 0;font-size:12px;color:#888">
                 <strong style="color:#c8c8c8">{valid_count} accounts</strong> with targets ·
                 pull={pull_limit} · cap={daily_cap} · delay={follow_delay_min}-{follow_delay_max}s
             </div>
@@ -815,7 +831,7 @@ with tab_follow:
 with tab_unfollow:
     st.markdown("""
     <div style="margin-bottom:20px">
-        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Unfollow Bot</span>
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Unfollow Bot</span>
         <br>
         <span style="font-size:13px;color:#888">Unfollow non-followers older than X days</span>
     </div>
@@ -833,7 +849,7 @@ with tab_unfollow:
         # Show connected accounts
         st.markdown("""
         <div style="margin-bottom:10px">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Connected Accounts</span>
+            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Connected Accounts</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -850,7 +866,7 @@ with tab_unfollow:
         # Settings
         st.markdown("""
         <div style="margin-bottom:10px">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Settings</span>
+            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Settings</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -872,8 +888,8 @@ with tab_unfollow:
         # Exemptions
         st.markdown("""
         <div style="margin-top:20px;margin-bottom:10px">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Exemptions</span>
-            <span style="font-size:12px;color:#555;margin-left:10px">Accounts to never unfollow (one per line)</span>
+            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Exemptions</span>
+            <span style="font-size:12px;color:#888;margin-left:10px">Accounts to never unfollow (one per line)</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -897,7 +913,7 @@ with tab_unfollow:
 
         with col_info:
             st.markdown(f"""
-            <div style="padding:10px 0;font-size:12px;color:#555">
+            <div style="padding:10px 0;font-size:12px;color:#888">
                 threshold={days_threshold}d · cap={daily_cap} · delay={unfollow_delay_min}-{unfollow_delay_max}s · {len(exemptions)} exemptions
             </div>
             """, unsafe_allow_html=True)
@@ -906,7 +922,7 @@ with tab_unfollow:
         if preview_clicked:
             st.markdown("""
             <div style="margin-top:20px;margin-bottom:10px">
-                <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Preview</span>
+                <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Preview</span>
             </div>
             """, unsafe_allow_html=True)
 
@@ -987,7 +1003,7 @@ with tab_unfollow:
 with tab_settings:
     st.markdown("""
     <div style="margin-bottom:20px">
-        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Account Configuration</span>
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Account Configuration</span>
         <br>
         <span style="font-size:13px;color:#888">Add your Bluesky accounts. App passwords are stored in session only.</span>
     </div>
@@ -1083,7 +1099,7 @@ with tab_settings:
             3. Copy the password (looks like <code>abcd-efgh-ijkl-mnop</code>)<br>
             4. Paste it above<br>
             <br>
-            <span style="color:#555">Passwords are stored in your browser session only. They are never saved to disk or sent anywhere except Bluesky's API.</span>
+            <span style="color:#888">Passwords are stored in your browser session only. They are never saved to disk or sent anywhere except Bluesky's API.</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
