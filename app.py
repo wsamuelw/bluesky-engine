@@ -438,15 +438,6 @@ with tab_dashboard:
             </div>
             """, unsafe_allow_html=True)
 
-            # Metric cards
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Followers", f"{followers:,}")
-            with col2:
-                st.metric("Following", f"{following:,}")
-            with col3:
-                st.metric("Ratio", ratio)
-
         except Exception as e:
             st.error(f"Failed to fetch stats for @{selected_account['handle']}: {str(e)[:80]}")
 
