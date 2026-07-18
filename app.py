@@ -202,19 +202,25 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 
 /* Buttons */
 .stButton > button {
-    background: #00d4ff;
+    background: #00d4ff !important;
     color: #0a0a0a !important;
-    border: none;
-    padding: 10px 24px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    border-radius: 2px;
+    border: none !important;
+    padding: 10px 24px !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    border-radius: 2px !important;
 }
 .stButton > button:hover {
-    background: #00b8db;
+    background: #00b8db !important;
+}
+.stButton > button span {
+    color: #0a0a0a !important;
+}
+.stButton > button p {
+    color: #0a0a0a !important;
 }
 
 /* Input fields */
