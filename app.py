@@ -394,7 +394,7 @@ st.markdown("""
 # =============================================================
 
 tab_dashboard, tab_like, tab_follow, tab_unfollow, tab_settings = st.tabs([
-    "DASHBOARD", "LIKE BOT", "FOLLOW BOT", "UNFOLLOW BOT", "SETTINGS"
+    "DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "SETTINGS"
 ])
 
 
@@ -536,17 +536,17 @@ with tab_dashboard:
                     </thead>
                     <tbody>
                         <tr>
-                            <td>LIKE BOT</td>
+                            <td>LIKE</td>
                             <td><span class="tag {like_status}">{like_label}</span></td>
                             <td>{like_progress}</td>
                         </tr>
                         <tr>
-                            <td>FOLLOW BOT</td>
+                            <td>FOLLOW</td>
                             <td><span class="tag {follow_status}">{follow_label}</span></td>
                             <td>{follow_progress}</td>
                         </tr>
                         <tr>
-                            <td>UNFOLLOW BOT</td>
+                            <td>UNFOLLOW</td>
                             <td><span class="tag {unfollow_status}">{unfollow_label}</span></td>
                             <td>{unfollow_progress}</td>
                         </tr>
@@ -558,7 +558,7 @@ with tab_dashboard:
 
 
 # =============================================================
-# LIKE BOT TAB
+# LIKE TAB
 # =============================================================
 
 with tab_like:
@@ -619,7 +619,7 @@ with tab_like:
         col_btn, col_info = st.columns([1, 3])
 
         with col_btn:
-            run_clicked = st.button("▶ RUN LIKE BOT", key="run_like", use_container_width=True)
+            run_clicked = st.button("▶ RUN LIKE", key="run_like", use_container_width=True)
 
         with col_info:
             st.markdown(f"""
@@ -695,7 +695,7 @@ with tab_like:
 
 
 # =============================================================
-# FOLLOW BOT TAB (Placeholder)
+# FOLLOW TAB (Placeholder)
 # =============================================================
 
 with tab_follow:
@@ -778,7 +778,7 @@ with tab_follow:
         col_btn, col_info = st.columns([1, 3])
 
         with col_btn:
-            follow_run_clicked = st.button("▶ RUN FOLLOW BOT", key="run_follow", use_container_width=True)
+            follow_run_clicked = st.button("▶ RUN FOLLOW", key="run_follow", use_container_width=True)
 
         with col_info:
             valid_count = sum(1 for a in configured_accounts if a.get("target"))
@@ -871,7 +871,7 @@ with tab_follow:
 
 
 # =============================================================
-# UNFOLLOW BOT TAB (Placeholder)
+# UNFOLLOW TAB (Placeholder)
 # =============================================================
 
 with tab_unfollow:
@@ -956,7 +956,7 @@ with tab_unfollow:
             preview_clicked = st.button("👁 PREVIEW", key="preview_unfollow", use_container_width=True)
 
         with col_run:
-            unfollow_clicked = st.button("🚪 RUN UNFOLLOW BOT", key="run_unfollow", use_container_width=True)
+            unfollow_clicked = st.button("🚪 RUN UNFOLLOW", key="run_unfollow", use_container_width=True)
 
         with col_info:
             st.markdown(f"""
