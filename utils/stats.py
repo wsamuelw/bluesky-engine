@@ -22,14 +22,18 @@ def get_stats(handle: str, client: Client) -> dict:
     following = profile.follows_count or 0
 
     # Calculate ratio (followers:following)
-    if following > 0:
-        ratio = round(following / max(followers, 1), 1)
+    # Higher is better (more followers per following)
+    if followers > 0 and following > 0:
+        ratio = round(followers / following, 2)
+        ratio_str = f"{ratio}:1"
+    elif followers > 0:
+        ratio_str = f"{followers}:0"
     else:
-        ratio = 0
+        ratio_str = "N/A"
 
     return {
         "followers": followers,
         "following": following,
-        "ratio": f"1:{ratio}" if ratio > 0 else "N/A",
+        "ratio": ratio_str,
         "handle": handle,
     }

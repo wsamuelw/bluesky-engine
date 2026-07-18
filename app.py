@@ -585,9 +585,9 @@ with tab_like:
         </div>
         """, unsafe_allow_html=True)
 
-        # Show accounts as pills/chips
+        # Show accounts as pills/chips with enabled/disabled state
         accounts_html = " ".join([
-            f'<span style="display:inline-block;background:#1a1a1a;border:1px solid #333;padding:6px 14px;border-radius:20px;font-size:13px;margin:0 6px 6px 0;font-family:JetBrains Mono,monospace">@{a["handle"]}</span>'
+            f'<span style="display:inline-block;background:#1a1a1a;border:1px solid #333;padding:6px 14px;border-radius:20px;font-size:13px;margin:0 6px 6px 0;font-family:JetBrains Mono,monospace;opacity:{"1" if a.get("enabled", True) else "0.4"}">@{a["handle"]} {"✓" if a.get("enabled", True) else "✗"}</span>'
             for a in configured_accounts
         ])
         st.markdown(f"""
@@ -600,15 +600,20 @@ with tab_like:
         col1, col2, col3, col4, col5 = st.columns(5)
 
         with col1:
-            batch_size = st.number_input("BATCH SIZE", min_value=10, max_value=500, value=200, step=10)
+            batch_size = st.number_input("BATCH SIZE", min_value=10, max_value=500, value=200, step=10,
+                help="Number of non-followers to like per run. Start with 50 to test.")
         with col2:
-            likes_per_user = st.number_input("LIKES PER USER", min_value=1, max_value=5, value=2, step=1)
+            likes_per_user = st.number_input("LIKES PER USER", min_value=1, max_value=5, value=2, step=1,
+                help="How many posts to like per person. 2 is recommended.")
         with col3:
-            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=1000, value=400, step=10, key="like_daily_cap")
+            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=1000, value=400, step=10, key="like_daily_cap",
+                help="Maximum likes per day across all runs. Helps avoid rate limits.")
         with col4:
-            delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=5, step=1)
+            delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=5, step=1,
+                help="Minimum seconds between likes. Lower = faster but riskier.")
         with col5:
-            delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=10, step=1)
+            delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=10, step=1,
+                help="Maximum seconds between likes. Random delay between min and max.")
 
         # Run button
         col_btn, col_info = st.columns([1, 3])
@@ -755,13 +760,17 @@ with tab_follow:
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
-            pull_limit = st.number_input("PULL LIMIT", min_value=10, max_value=500, value=200, step=10)
+            pull_limit = st.number_input("PULL LIMIT", min_value=10, max_value=500, value=200, step=10,
+                help="Max followers to pull from target account. 200 is a good start.")
         with col2:
-            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=200, value=75, step=5)
+            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=200, value=75, step=5,
+                help="Max follows per account per run. Keeps you under rate limits.")
         with col3:
-            follow_delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=5, step=1, key="follow_delay_min")
+            follow_delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=5, step=1, key="follow_delay_min",
+                help="Minimum seconds between follows. Lower = faster but riskier.")
         with col4:
-            follow_delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=15, step=1, key="follow_delay_max")
+            follow_delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=15, step=1, key="follow_delay_max",
+                help="Maximum seconds between follows. Random delay between min and max.")
 
         auto_like = st.checkbox("Auto-like posts after following", value=True)
 
@@ -799,10 +808,17 @@ with tab_follow:
                 st.error("Min delay must be <= max delay")
             else:
                 # Validate accounts with targets
-                valid_accounts = [
-                    a for a in configured_accounts
-                    if a.get("target")
-                ]
+                valid_accounts = []
+                for a in configured_accounts:
+                    target = a.get("target", "").strip()
+                    if target:
+                        # Validate handle format
+                        if "." not in target:
+                            st.error(f"Invalid target @{target}. Must be a full handle like 'karpathy.bsky.social'")
+                            valid_accounts = []
+                            break
+                        else:
+                            valid_accounts.append(a)
 
                 if not valid_accounts:
                     st.error("No targets configured. Add a target account for at least one of your accounts.")
@@ -884,7 +900,7 @@ with tab_unfollow:
         """, unsafe_allow_html=True)
 
         accounts_html = " ".join([
-            f'<span style="display:inline-block;background:#1a1a1a;border:1px solid #333;padding:6px 14px;border-radius:20px;font-size:13px;margin:0 6px 6px 0;font-family:JetBrains Mono,monospace">@{a["handle"]}</span>'
+            f'<span style="display:inline-block;background:#1a1a1a;border:1px solid #333;padding:6px 14px;border-radius:20px;font-size:13px;margin:0 6px 6px 0;font-family:JetBrains Mono,monospace;opacity:{"1" if a.get("enabled", True) else "0.4"}">@{a["handle"]} {"✓" if a.get("enabled", True) else "✗"}</span>'
             for a in configured_accounts
         ])
         st.markdown(f"""
@@ -904,16 +920,16 @@ with tab_unfollow:
 
         with col1:
             days_threshold = st.number_input("DAYS THRESHOLD", min_value=1, max_value=365, value=30, step=1,
-                help="Only unfollow if followed more than X days ago")
+                help="Only unfollow if followed more than X days ago. 30 is recommended.")
         with col2:
             daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=200, value=75, step=5,
-                key="unfollow_daily_cap")
+                key="unfollow_daily_cap", help="Max unfollows per run. Keeps you under rate limits.")
         with col3:
             unfollow_delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=5, step=1,
-                key="unfollow_delay_min")
+                key="unfollow_delay_min", help="Minimum seconds between unfollows.")
         with col4:
             unfollow_delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=15, step=1,
-                key="unfollow_delay_max")
+                key="unfollow_delay_max", help="Maximum seconds between unfollows.")
 
         # Exemptions
         st.markdown("""
@@ -925,10 +941,11 @@ with tab_unfollow:
 
         exemptions_text = st.text_area(
             "EXEMPTIONS",
-            value="karpathy.bsky.social\nbsky.app",
+            value="",
             height=100,
             key="unfollow_exemptions",
             label_visibility="collapsed",
+            placeholder="karpathy.bsky.social\nbsky.app",
         )
         exemptions = [e.strip() for e in exemptions_text.split("\n") if e.strip()]
 
