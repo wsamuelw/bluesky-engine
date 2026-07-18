@@ -336,8 +336,15 @@ if "accounts" not in st.session_state:
 if "bot_running" not in st.session_state:
     st.session_state.bot_running = False
 
-if "log_lines" not in st.session_state:
-    st.session_state.log_lines = []
+# Separate log lines for each bot
+if "like_log_lines" not in st.session_state:
+    st.session_state.like_log_lines = []
+
+if "follow_log_lines" not in st.session_state:
+    st.session_state.follow_log_lines = []
+
+if "unfollow_log_lines" not in st.session_state:
+    st.session_state.unfollow_log_lines = []
 
 
 # =============================================================
@@ -596,12 +603,12 @@ with tab_like:
         # Run the bot
         if run_clicked:
             st.session_state.bot_running = True
-            st.session_state.log_lines = []
+            st.session_state.like_log_lines = []
 
             # Callback to update log display in real-time
             def log_callback(line):
-                st.session_state.log_lines.append(line)
-                log_text = "\n".join(st.session_state.log_lines[-50:])
+                st.session_state.like_log_lines.append(line)
+                log_text = "\n".join(st.session_state.like_log_lines[-50:])
                 log_placeholder.code(log_text, language="bash")
 
             # Run the bot (synchronous)
@@ -621,8 +628,8 @@ with tab_like:
             st.session_state.bot_running = False
         else:
             # Show existing log or placeholder
-            if st.session_state.log_lines:
-                log_text = "\n".join(st.session_state.log_lines[-50:])
+            if st.session_state.like_log_lines:
+                log_text = "\n".join(st.session_state.like_log_lines[-50:])
                 log_placeholder.code(log_text, language="bash")
             else:
                 log_placeholder.code("Waiting to start...", language="bash")
@@ -743,12 +750,12 @@ with tab_follow:
                 st.error("No targets configured. Add a target account for at least one of your accounts.")
             else:
                 st.session_state.bot_running = True
-                st.session_state.log_lines = []
+                st.session_state.follow_log_lines = []
 
                 # Callback to update log display
                 def follow_log_callback(line):
-                    st.session_state.log_lines.append(line)
-                    log_text = "\n".join(st.session_state.log_lines[-50:])
+                    st.session_state.follow_log_lines.append(line)
+                    log_text = "\n".join(st.session_state.follow_log_lines[-50:])
                     follow_log_placeholder.code(log_text, language="bash")
 
                 # Run the bot
@@ -769,8 +776,8 @@ with tab_follow:
                 st.session_state.bot_running = False
         else:
             # Show existing log or placeholder
-            if st.session_state.log_lines:
-                log_text = "\n".join(st.session_state.log_lines[-50:])
+            if st.session_state.follow_log_lines:
+                log_text = "\n".join(st.session_state.follow_log_lines[-50:])
                 follow_log_placeholder.code(log_text, language="bash")
             else:
                 follow_log_placeholder.code("Waiting to start...", language="bash")
@@ -910,12 +917,12 @@ with tab_unfollow:
         # Run the bot
         if unfollow_clicked:
             st.session_state.bot_running = True
-            st.session_state.log_lines = []
+            st.session_state.unfollow_log_lines = []
 
             # Callback to update log display
             def unfollow_log_callback(line):
-                st.session_state.log_lines.append(line)
-                log_text = "\n".join(st.session_state.log_lines[-50:])
+                st.session_state.unfollow_log_lines.append(line)
+                log_text = "\n".join(st.session_state.unfollow_log_lines[-50:])
                 unfollow_log_placeholder.code(log_text, language="bash")
 
             # Run the bot
@@ -936,8 +943,8 @@ with tab_unfollow:
             st.session_state.bot_running = False
         else:
             # Show existing log or placeholder
-            if st.session_state.log_lines:
-                log_text = "\n".join(st.session_state.log_lines[-50:])
+            if st.session_state.unfollow_log_lines:
+                log_text = "\n".join(st.session_state.unfollow_log_lines[-50:])
                 unfollow_log_placeholder.code(log_text, language="bash")
             else:
                 unfollow_log_placeholder.code("Waiting to start...", language="bash")
