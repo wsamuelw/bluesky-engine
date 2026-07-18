@@ -53,33 +53,38 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 }
 
 /* Topbar */
-/* Header */
-.stRadio > div {
+.topbar {
     background: #111;
-    border: 1px solid #222;
-    border-radius: 2px;
+    border-bottom: 1px solid #222;
     padding: 12px 20px;
     margin: -2rem -2rem 2rem -2rem;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+}
+.topbar .brand {
+    color: #00d4ff;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+}
+.topbar .brand span { color: #555; }
+.topbar .nav-links {
+    display: flex;
     gap: 4px;
 }
-.stRadio > div > label {
-    color: #888;
-    font-family: 'JetBrains Mono', monospace;
+.topbar .nav-link {
+    color: #555;
     font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
     text-transform: uppercase;
     letter-spacing: 1px;
     padding: 8px 16px;
     border-radius: 2px;
     cursor: pointer;
 }
-.stRadio > div > label:hover {
+.topbar .nav-link:hover {
     color: #c8c8c8;
-    background: #1a1a1a;
-}
-.stRadio > div > label[data-checked="true"] {
-    color: #00d4ff;
     background: #1a1a1a;
 }
 
@@ -415,6 +420,24 @@ if "unfollow_log_lines" not in st.session_state:
 # Verification results
 if "verification_results" not in st.session_state:
     st.session_state.verification_results = []
+
+
+# =============================================================
+# HEADER
+# =============================================================
+
+st.markdown("""
+<div class="topbar">
+    <div class="brand">bsky_growth <span>v1.0</span></div>
+    <div class="nav-links">
+        <span class="nav-link" data-page="DASHBOARD">DASHBOARD</span>
+        <span class="nav-link" data-page="LIKE">LIKE</span>
+        <span class="nav-link" data-page="FOLLOW">FOLLOW</span>
+        <span class="nav-link" data-page="UNFOLLOW">UNFOLLOW</span>
+        <span class="nav-link" data-page="SETTINGS">SETTINGS</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 
 # =============================================================
