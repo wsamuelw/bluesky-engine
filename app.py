@@ -59,7 +59,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     border: 1px solid #222;
     border-radius: 0;
     padding: 10px 20px;
-    margin: -2rem -2rem 2rem -2rem;
+    margin-top: -1rem;
     gap: 0;
 }
 .stTabs [data-baseweb="tab"] {
@@ -424,6 +424,18 @@ if "unfollow_log_lines" not in st.session_state:
 # Verification results
 if "verification_results" not in st.session_state:
     st.session_state.verification_results = []
+
+
+# =============================================================
+# HEADER
+# =============================================================
+
+st.markdown("""
+<div style="background:#111;border:1px solid #222;padding:12px 20px;margin:-2rem -2rem 2rem -2rem">
+    <span style="color:#00d4ff;font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-0.5px">bsky_growth</span>
+    <span style="color:#555;font-size:14px;font-family:'JetBrains Mono',monospace"> v1.0</span>
+</div>
+""", unsafe_allow_html=True)
 
 
 # =============================================================
