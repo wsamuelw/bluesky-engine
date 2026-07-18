@@ -527,57 +527,73 @@ with tab_like:
     </div>
     """, unsafe_allow_html=True)
 
-    # Config
-    col1, col2, col3, col4 = st.columns(4)
+    # Show connected accounts
+    configured_accounts = [
+        a for a in st.session_state.accounts
+        if a.get("handle") and a.get("password")
+    ]
 
-    with col1:
-        batch_size = st.number_input("BATCH SIZE", min_value=10, max_value=1000, value=200, step=10)
-    with col2:
-        likes_per_user = st.number_input("LIKES PER USER", min_value=1, max_value=5, value=2, step=1)
-    with col3:
-        delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=5, step=1)
-    with col4:
-        delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=10, step=1)
-
-    # Run button
-    col_btn, col_info = st.columns([1, 3])
-
-    with col_btn:
-        run_clicked = st.button("▶ RUN LIKE BOT", key="run_like", use_container_width=True)
-
-    with col_info:
-        enabled_count = sum(1 for a in st.session_state.accounts if a.get("enabled") and a.get("handle"))
-        st.markdown(f"""
-        <div style="padding:10px 0;font-size:12px;color:#555">
-            <strong style="color:#c8c8c8">{enabled_count} accounts</strong> configured ·
-            batch={batch_size} · delay={delay_min}-{delay_max}s ·
-            est. {int(batch_size * (delay_min + delay_max) / 2 / 60)} min
+    if not configured_accounts:
+        st.warning("No accounts configured. Go to SETTINGS tab to add accounts first.")
+    else:
+        st.markdown("""
+        <div style="margin-bottom:10px">
+            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Connected Accounts</span>
         </div>
         """, unsafe_allow_html=True)
 
-    # Live log
-    st.markdown("""
-    <div class="panel" style="margin-top:20px">
-        <div class="panel-header">
-            <span class="title">Live Output</span>
-            <span class="status idle" id="log-status">IDLE</span>
+        # Show accounts as pills/chips
+        accounts_html = " ".join([
+            f'<span style="display:inline-block;background:#1a1a1a;border:1px solid #333;padding:6px 14px;border-radius:20px;font-size:13px;margin:0 6px 6px 0;font-family:JetBrains Mono,monospace">@{a["handle"]}</span>'
+            for a in configured_accounts
+        ])
+        st.markdown(f"""
+        <div style="margin-bottom:20px">
+            {accounts_html}
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
-    log_placeholder = st.empty()
+        # Config
+        col1, col2, col3, col4 = st.columns(4)
 
-    # Run the bot
-    if run_clicked:
-        # Validate accounts
-        valid_accounts = [
-            a for a in st.session_state.accounts
-            if a.get("enabled") and a.get("handle") and a.get("password")
-        ]
+        with col1:
+            batch_size = st.number_input("BATCH SIZE", min_value=10, max_value=1000, value=200, step=10)
+        with col2:
+            likes_per_user = st.number_input("LIKES PER USER", min_value=1, max_value=5, value=2, step=1)
+        with col3:
+            delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=5, step=1)
+        with col4:
+            delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=10, step=1)
 
-        if not valid_accounts:
-            st.error("No valid accounts configured. Go to SETTINGS tab to add accounts.")
-        else:
+        # Run button
+        col_btn, col_info = st.columns([1, 3])
+
+        with col_btn:
+            run_clicked = st.button("▶ RUN LIKE BOT", key="run_like", use_container_width=True)
+
+        with col_info:
+            st.markdown(f"""
+            <div style="padding:10px 0;font-size:12px;color:#555">
+                <strong style="color:#c8c8c8">{len(configured_accounts)} accounts</strong> connected ·
+                batch={batch_size} · delay={delay_min}-{delay_max}s ·
+                est. {int(batch_size * (delay_min + delay_max) / 2 / 60)} min
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Live log
+        st.markdown("""
+        <div class="panel" style="margin-top:20px">
+            <div class="panel-header">
+                <span class="title">Live Output</span>
+                <span class="status idle" id="log-status">IDLE</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        log_placeholder = st.empty()
+
+        # Run the bot
+        if run_clicked:
             st.session_state.bot_running = True
             st.session_state.log_lines = []
 
@@ -590,7 +606,7 @@ with tab_like:
             # Run the bot (synchronous)
             try:
                 like_bot_run(
-                    valid_accounts,
+                    configured_accounts,
                     batch_size,
                     likes_per_user,
                     delay_min,
@@ -602,13 +618,13 @@ with tab_like:
                 st.error(f"Bot error: {e}")
 
             st.session_state.bot_running = False
-    else:
-        # Show existing log or placeholder
-        if st.session_state.log_lines:
-            log_text = "\n".join(st.session_state.log_lines[-50:])
-            log_placeholder.code(log_text, language="bash")
         else:
-            log_placeholder.code("Waiting to start...", language="bash")
+            # Show existing log or placeholder
+            if st.session_state.log_lines:
+                log_text = "\n".join(st.session_state.log_lines[-50:])
+                log_placeholder.code(log_text, language="bash")
+            else:
+                log_placeholder.code("Waiting to start...", language="bash")
 
 
 # =============================================================
