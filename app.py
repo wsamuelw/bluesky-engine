@@ -12,6 +12,7 @@ from utils.stats import get_stats
 from utils.tracker import load_history, save_snapshot, get_chart_data
 from bots.like_bot import like_bot_run
 from bots.follow_bot import follow_bot_run
+from bots.unfollow_bot import unfollow_bot_run, get_unfollow_preview
 
 # =============================================================
 # PAGE CONFIG
@@ -781,19 +782,165 @@ with tab_follow:
 
 with tab_unfollow:
     st.markdown("""
-    <div class="panel">
-        <div class="panel-header">
-            <span class="title">Unfollow Bot</span>
-            <span class="status idle">COMING SOON</span>
-        </div>
-        <div class="panel-body">
-            <div style="text-align:center;padding:40px;color:#333;font-size:13px">
-                Unfollow bot will be available in Phase 2.<br>
-                Currently in design — check mockup <code>4-unfollowbot-cards.html</code>
-            </div>
-        </div>
+    <div style="margin-bottom:20px">
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Unfollow Bot</span>
+        <br>
+        <span style="font-size:13px;color:#888">Unfollow non-followers older than X days</span>
     </div>
     """, unsafe_allow_html=True)
+
+    # Get configured accounts
+    configured_accounts = [
+        a for a in st.session_state.accounts
+        if a.get("handle") and a.get("password")
+    ]
+
+    if not configured_accounts:
+        st.warning("No accounts configured. Go to SETTINGS tab to add accounts first.")
+    else:
+        # Show connected accounts
+        st.markdown("""
+        <div style="margin-bottom:10px">
+            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Connected Accounts</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        accounts_html = " ".join([
+            f'<span style="display:inline-block;background:#1a1a1a;border:1px solid #333;padding:6px 14px;border-radius:20px;font-size:13px;margin:0 6px 6px 0;font-family:JetBrains Mono,monospace">@{a["handle"]}</span>'
+            for a in configured_accounts
+        ])
+        st.markdown(f"""
+        <div style="margin-bottom:20px">
+            {accounts_html}
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Settings
+        st.markdown("""
+        <div style="margin-bottom:10px">
+            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Settings</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            days_threshold = st.number_input("DAYS THRESHOLD", min_value=1, max_value=365, value=30, step=1,
+                help="Only unfollow if followed more than X days ago")
+        with col2:
+            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=200, value=75, step=5,
+                key="unfollow_daily_cap")
+        with col3:
+            unfollow_delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=5, step=1,
+                key="unfollow_delay_min")
+        with col4:
+            unfollow_delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=15, step=1,
+                key="unfollow_delay_max")
+
+        # Exemptions
+        st.markdown("""
+        <div style="margin-top:20px;margin-bottom:10px">
+            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Exemptions</span>
+            <span style="font-size:12px;color:#555;margin-left:10px">Accounts to never unfollow (one per line)</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        exemptions_text = st.text_area(
+            "EXEMPTIONS",
+            value="karpathy.bsky.social\nbsky.app",
+            height=100,
+            key="unfollow_exemptions",
+            label_visibility="collapsed",
+        )
+        exemptions = [e.strip() for e in exemptions_text.split("\n") if e.strip()]
+
+        # Preview button
+        col_preview, col_run, col_info = st.columns([1, 1, 2])
+
+        with col_preview:
+            preview_clicked = st.button("👁 PREVIEW", key="preview_unfollow", use_container_width=True)
+
+        with col_run:
+            unfollow_clicked = st.button("🚪 RUN UNFOLLOW BOT", key="run_unfollow", use_container_width=True)
+
+        with col_info:
+            st.markdown(f"""
+            <div style="padding:10px 0;font-size:12px;color:#555">
+                threshold={days_threshold}d · cap={daily_cap} · delay={unfollow_delay_min}-{unfollow_delay_max}s · {len(exemptions)} exemptions
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Preview results
+        if preview_clicked:
+            st.markdown("""
+            <div style="margin-top:20px;margin-bottom:10px">
+                <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Preview</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+            with st.spinner("Fetching preview data..."):
+                preview_results = get_unfollow_preview(configured_accounts, days_threshold, exemptions)
+
+            for r in preview_results:
+                if "error" in r:
+                    st.error(f"@{r['handle']}: {r['error']}")
+                else:
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric(f"@{r['handle']}", f"{r['eligible']} eligible")
+                    with col2:
+                        st.metric("Following", f"{r['total_following']:,}")
+                    with col3:
+                        st.metric("Followers", f"{r['total_followers']:,}")
+                    with col4:
+                        st.metric("Non-followers", f"{r['non_followers']:,}")
+
+        # Live log
+        st.markdown("""
+        <div class="panel" style="margin-top:20px">
+            <div class="panel-header">
+                <span class="title">Live Output</span>
+                <span class="status idle">IDLE</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        unfollow_log_placeholder = st.empty()
+
+        # Run the bot
+        if unfollow_clicked:
+            st.session_state.bot_running = True
+            st.session_state.log_lines = []
+
+            # Callback to update log display
+            def unfollow_log_callback(line):
+                st.session_state.log_lines.append(line)
+                log_text = "\n".join(st.session_state.log_lines[-50:])
+                unfollow_log_placeholder.code(log_text, language="bash")
+
+            # Run the bot
+            try:
+                unfollow_bot_run(
+                    configured_accounts,
+                    days_threshold,
+                    daily_cap,
+                    unfollow_delay_min,
+                    unfollow_delay_max,
+                    exemptions,
+                    log_callback=unfollow_log_callback,
+                )
+                st.success("Unfollow bot run complete!")
+            except Exception as e:
+                st.error(f"Bot error: {e}")
+
+            st.session_state.bot_running = False
+        else:
+            # Show existing log or placeholder
+            if st.session_state.log_lines:
+                log_text = "\n".join(st.session_state.log_lines[-50:])
+                unfollow_log_placeholder.code(log_text, language="bash")
+            else:
+                unfollow_log_placeholder.code("Waiting to start...", language="bash")
 
 
 # =============================================================
