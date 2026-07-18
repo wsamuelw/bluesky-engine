@@ -365,33 +365,79 @@ tab_dashboard, tab_like, tab_follow, tab_unfollow, tab_settings = st.tabs([
 # =============================================================
 
 with tab_dashboard:
-    # Ticker strip — placeholder stats
-    st.markdown("""
+    # Fetch real stats from configured accounts
+    valid_accounts = [
+        a for a in st.session_state.accounts
+        if a.get("enabled") and a.get("handle") and a.get("password")
+    ]
+
+    total_followers = 0
+    total_following = 0
+    account_stats = []
+
+    if valid_accounts:
+        for acc in valid_accounts:
+            try:
+                from utils.auth import login
+                from utils.stats import get_stats
+                client = login(acc["handle"], acc["password"])
+                stats = get_stats(acc["handle"], client)
+                total_followers += stats["followers"]
+                total_following += stats["following"]
+                account_stats.append(stats)
+            except Exception as e:
+                account_stats.append({"handle": acc["handle"], "error": str(e)})
+    else:
+        st.info("Configure your accounts in the SETTINGS tab to see live stats here.")
+
+    # Calculate ratio
+    if total_following > 0:
+        ratio = round(total_following / max(total_followers, 1), 1)
+        ratio_str = f"1:{ratio}"
+    else:
+        ratio_str = "N/A"
+
+    # Ticker strip — real stats
+    st.markdown(f"""
     <div class="ticker">
         <div class="ticker-item">
             <span class="label">Followers</span>
-            <span class="value">—</span>
+            <span class="value">{total_followers:,}</span>
         </div>
         <div class="ticker-item">
             <span class="label">Following</span>
-            <span class="value">—</span>
+            <span class="value">{total_following:,}</span>
         </div>
         <div class="ticker-item">
             <span class="label">Ratio</span>
-            <span class="value">—</span>
+            <span class="value">{ratio_str}</span>
         </div>
         <div class="ticker-item">
-            <span class="label">Likes Today</span>
-            <span class="value">0</span>
-        </div>
-        <div class="ticker-item">
-            <span class="label">Uptime</span>
-            <span class="value">0m</span>
+            <span class="label">Accounts</span>
+            <span class="value">{len(valid_accounts)}</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    st.info("Configure your accounts in the SETTINGS tab to see live stats here.")
+    # Per-account breakdown
+    if account_stats:
+        st.markdown("""
+        <div style="margin-top:20px;margin-bottom:10px">
+            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Per-Account Stats</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        cols = st.columns(len(account_stats))
+        for i, stats in enumerate(account_stats):
+            with cols[i]:
+                if "error" in stats:
+                    st.error(f"@{stats['handle']}: {stats['error'][:50]}")
+                else:
+                    st.metric(
+                        label=f"@{stats['handle']}",
+                        value=f"{stats['followers']:,} followers",
+                        delta=f"{stats['following']:,} following · {stats['ratio']} ratio"
+                    )
 
     # Growth chart placeholder
     col1, col2 = st.columns(2)
