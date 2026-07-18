@@ -366,87 +366,74 @@ tab_dashboard, tab_like, tab_follow, tab_unfollow, tab_settings = st.tabs([
 # =============================================================
 
 with tab_dashboard:
-    # Fetch real stats from configured accounts
+    # Get configured accounts
     valid_accounts = [
         a for a in st.session_state.accounts
         if a.get("enabled") and a.get("handle") and a.get("password")
     ]
 
-    total_followers = 0
-    total_following = 0
-    account_stats = []
-
-    if valid_accounts:
-        for acc in valid_accounts:
-            try:
-                from utils.auth import login
-                from utils.stats import get_stats
-                client = login(acc["handle"], acc["password"])
-                stats = get_stats(acc["handle"], client)
-                total_followers += stats["followers"]
-                total_following += stats["following"]
-                account_stats.append(stats)
-            except Exception as e:
-                account_stats.append({"handle": acc["handle"], "error": str(e)})
-    else:
+    if not valid_accounts:
         st.info("Configure your accounts in the SETTINGS tab to see live stats here.")
-
-    # Calculate ratio
-    if total_following > 0:
-        ratio = round(total_following / max(total_followers, 1), 1)
-        ratio_str = f"1:{ratio}"
     else:
-        ratio_str = "N/A"
+        # Account selector dropdown
+        account_options = [f"@{a['handle']}" for a in valid_accounts]
+        selected = st.selectbox("SELECT ACCOUNT", account_options, key="dashboard_account")
 
-    # Save today's snapshot (if we have data)
-    if total_followers > 0:
-        save_snapshot(total_followers, total_following)
+        # Get selected account
+        selected_idx = account_options.index(selected)
+        selected_account = valid_accounts[selected_idx]
+
+        # Fetch stats for selected account
+        try:
+            from utils.auth import login
+            from utils.stats import get_stats
+            client = login(selected_account["handle"], selected_account["password"])
+            stats = get_stats(selected_account["handle"], client)
+
+            followers = stats["followers"]
+            following = stats["following"]
+            ratio = stats["ratio"]
+
+            # Save snapshot
+            save_snapshot(followers, following)
+
+            # Ticker strip
+            st.markdown(f"""
+            <div class="ticker">
+                <div class="ticker-item">
+                    <span class="label">Followers</span>
+                    <span class="value">{followers:,}</span>
+                </div>
+                <div class="ticker-item">
+                    <span class="label">Following</span>
+                    <span class="value">{following:,}</span>
+                </div>
+                <div class="ticker-item">
+                    <span class="label">Ratio</span>
+                    <span class="value">{ratio}</span>
+                </div>
+                <div class="ticker-item">
+                    <span class="label">Handle</span>
+                    <span class="value">@{selected_account['handle']}</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Metric cards
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Followers", f"{followers:,}")
+            with col2:
+                st.metric("Following", f"{following:,}")
+            with col3:
+                st.metric("Ratio", ratio)
+
+        except Exception as e:
+            st.error(f"Failed to fetch stats for @{selected_account['handle']}: {str(e)[:80]}")
 
     # Load history for chart
     history = load_history()
     chart_data = get_chart_data(history)
-
-    # Ticker strip — real stats
-    st.markdown(f"""
-    <div class="ticker">
-        <div class="ticker-item">
-            <span class="label">Followers</span>
-            <span class="value">{total_followers:,}</span>
-        </div>
-        <div class="ticker-item">
-            <span class="label">Following</span>
-            <span class="value">{total_following:,}</span>
-        </div>
-        <div class="ticker-item">
-            <span class="label">Ratio</span>
-            <span class="value">{ratio_str}</span>
-        </div>
-        <div class="ticker-item">
-            <span class="label">Accounts</span>
-            <span class="value">{len(valid_accounts)}</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Per-account breakdown
-    if account_stats:
-        st.markdown("""
-        <div style="margin-top:20px;margin-bottom:10px">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555">Per-Account Stats</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-        cols = st.columns(len(account_stats))
-        for i, stats in enumerate(account_stats):
-            with cols[i]:
-                if "error" in stats:
-                    st.error(f"@{stats['handle']}: {stats['error'][:50]}")
-                else:
-                    st.metric(
-                        label=f"@{stats['handle']}",
-                        value=f"{stats['followers']:,} followers",
-                        delta=f"{stats['following']:,} following · {stats['ratio']} ratio"
-                    )
 
     # Growth chart
     col1, col2 = st.columns(2)
