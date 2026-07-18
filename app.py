@@ -336,6 +336,16 @@ if "accounts" not in st.session_state:
 if "bot_running" not in st.session_state:
     st.session_state.bot_running = False
 
+# Per-bot running states
+if "like_bot_running" not in st.session_state:
+    st.session_state.like_bot_running = False
+
+if "follow_bot_running" not in st.session_state:
+    st.session_state.follow_bot_running = False
+
+if "unfollow_bot_running" not in st.session_state:
+    st.session_state.unfollow_bot_running = False
+
 # Separate log lines for each bot
 if "like_log_lines" not in st.session_state:
     st.session_state.like_log_lines = []
@@ -489,7 +499,21 @@ with tab_dashboard:
             """, unsafe_allow_html=True)
 
     with col2:
-        st.markdown("""
+        # Determine bot statuses
+        like_status = "active" if st.session_state.like_bot_running else "idle"
+        follow_status = "active" if st.session_state.follow_bot_running else "idle"
+        unfollow_status = "active" if st.session_state.unfollow_bot_running else "idle"
+
+        like_label = "RUNNING" if like_status == "active" else "IDLE"
+        follow_label = "RUNNING" if follow_status == "active" else "IDLE"
+        unfollow_label = "RUNNING" if unfollow_status == "active" else "IDLE"
+
+        # Count log lines for progress
+        like_progress = f"{len(st.session_state.like_log_lines)} lines" if st.session_state.like_log_lines else "—"
+        follow_progress = f"{len(st.session_state.follow_log_lines)} lines" if st.session_state.follow_log_lines else "—"
+        unfollow_progress = f"{len(st.session_state.unfollow_log_lines)} lines" if st.session_state.unfollow_log_lines else "—"
+
+        st.markdown(f"""
         <div class="panel">
             <div class="panel-header">
                 <span class="title">Bot Status</span>
@@ -502,18 +526,18 @@ with tab_dashboard:
                     <tbody>
                         <tr>
                             <td>LIKE BOT</td>
-                            <td><span class="tag idle">IDLE</span></td>
-                            <td>—</td>
+                            <td><span class="tag {like_status}">{like_label}</span></td>
+                            <td>{like_progress}</td>
                         </tr>
                         <tr>
                             <td>FOLLOW BOT</td>
-                            <td><span class="tag idle">IDLE</span></td>
-                            <td>—</td>
+                            <td><span class="tag {follow_status}">{follow_label}</span></td>
+                            <td>{follow_progress}</td>
                         </tr>
                         <tr>
                             <td>UNFOLLOW BOT</td>
-                            <td><span class="tag idle">IDLE</span></td>
-                            <td>—</td>
+                            <td><span class="tag {unfollow_status}">{unfollow_label}</span></td>
+                            <td>{unfollow_progress}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -606,7 +630,7 @@ with tab_like:
             if delay_min > delay_max:
                 st.error("Min delay must be <= max delay")
             else:
-                st.session_state.bot_running = True
+                st.session_state.like_bot_running = True
                 st.session_state.like_log_lines = []
 
                 # Callback to update log display in real-time
@@ -630,7 +654,7 @@ with tab_like:
                     except Exception as e:
                         st.error(f"Bot error: {e}")
 
-                st.session_state.bot_running = False
+                st.session_state.like_bot_running = False
         else:
             # Show existing log or placeholder
             if st.session_state.like_log_lines:
@@ -758,7 +782,7 @@ with tab_follow:
                 if not valid_accounts:
                     st.error("No targets configured. Add a target account for at least one of your accounts.")
                 else:
-                    st.session_state.bot_running = True
+                    st.session_state.follow_bot_running = True
                     st.session_state.follow_log_lines = []
 
                     # Callback to update log display
@@ -783,7 +807,7 @@ with tab_follow:
                         except Exception as e:
                             st.error(f"Bot error: {e}")
 
-                st.session_state.bot_running = False
+                    st.session_state.follow_bot_running = False
         else:
             # Show existing log or placeholder
             if st.session_state.follow_log_lines:
@@ -930,7 +954,7 @@ with tab_unfollow:
             if unfollow_delay_min > unfollow_delay_max:
                 st.error("Min delay must be <= max delay")
             else:
-                st.session_state.bot_running = True
+                st.session_state.unfollow_bot_running = True
                 st.session_state.unfollow_log_lines = []
 
                 # Callback to update log display
@@ -955,7 +979,7 @@ with tab_unfollow:
                     except Exception as e:
                         st.error(f"Bot error: {e}")
 
-            st.session_state.bot_running = False
+                st.session_state.unfollow_bot_running = False
         else:
             # Show existing log or placeholder
             if st.session_state.unfollow_log_lines:
