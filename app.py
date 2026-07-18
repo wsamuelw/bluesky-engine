@@ -429,13 +429,6 @@ if "verification_results" not in st.session_state:
 st.markdown("""
 <div class="topbar">
     <div class="brand">bsky_growth <span>v1.0</span></div>
-    <div class="nav-links">
-        <span class="nav-link" data-page="DASHBOARD">DASHBOARD</span>
-        <span class="nav-link" data-page="LIKE">LIKE</span>
-        <span class="nav-link" data-page="FOLLOW">FOLLOW</span>
-        <span class="nav-link" data-page="UNFOLLOW">UNFOLLOW</span>
-        <span class="nav-link" data-page="SETTINGS">SETTINGS</span>
-    </div>
 </div>
 """, unsafe_allow_html=True)
 
