@@ -420,8 +420,10 @@ with tab_dashboard:
         try:
             from utils.auth import login
             from utils.stats import get_stats
-            client = login(selected_account["handle"], selected_account["password"])
-            stats = get_stats(selected_account["handle"], client)
+
+            with st.spinner("Fetching stats..."):
+                client = login(selected_account["handle"], selected_account["password"])
+                stats = get_stats(selected_account["handle"], client)
 
             followers = stats["followers"]
             following = stats["following"]
