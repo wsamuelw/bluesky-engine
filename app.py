@@ -493,16 +493,25 @@ with tab_dashboard:
             followers = stats["followers"]
             following = stats["following"]
             ratio = stats["ratio"]
+            non_followers = following - followers
+
+            # Calculate net change from history
+            history = load_history()
+            chart_data = get_chart_data(history)
+            net_change = 0
+            if len(chart_data) >= 2:
+                net_change = chart_data[-1]["followers"] - chart_data[-2]["followers"]
 
             # Save snapshot
             save_snapshot(followers, following)
 
-            # Ticker strip
+            # Ticker strip (matching mockup 12-dashboard-terminal.html)
             st.markdown(f"""
             <div class="ticker">
                 <div class="ticker-item">
                     <span class="label">Followers</span>
                     <span class="value">{followers:,}</span>
+                    <span class="delta up">+{net_change}</span>
                 </div>
                 <div class="ticker-item">
                     <span class="label">Following</span>
@@ -513,26 +522,37 @@ with tab_dashboard:
                     <span class="value">{ratio}</span>
                 </div>
                 <div class="ticker-item">
-                    <span class="label">Handle</span>
-                    <span class="value">@{st.session_state.handle}</span>
+                    <span class="label">Net</span>
+                    <span class="value">+{net_change}</span>
+                    <span class="delta up">today</span>
+                </div>
+                <div class="ticker-item">
+                    <span class="label">Non-Followers</span>
+                    <span class="value">{non_followers:,}</span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
         except Exception as e:
             st.error(f"Failed to fetch stats: {str(e)[:200]}")
+            history = load_history()
+            chart_data = get_chart_data(history)
 
     # Load history for chart
     history = load_history()
     chart_data = get_chart_data(history)
 
-    # Growth chart
-    col1, col2 = st.columns(2)
+    # Two-column layout (matching mockup)
+    col1, col2 = st.columns([2, 1])
 
     with col1:
+        # Follower Growth chart
         st.markdown("""
-        <div style="margin-top:20px;margin-bottom:10px">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Follower Growth</span>
+        <div class="panel" style="margin-top:20px">
+            <div class="panel-header">
+                <span class="title">Follower Growth — 30d</span>
+                <span class="status live">LIVE</span>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -552,67 +572,91 @@ with tab_dashboard:
             days = len(chart_data)
 
             st.markdown(f"""
-            <div style="font-size:12px;color:#888;margin-top:8px">
+            <div style="font-size:11px;color:#333;margin-top:8px;font-family:'JetBrains Mono',monospace">
                 {days} days tracked · {change:+,} followers · since {first['date']}
             </div>
             """, unsafe_allow_html=True)
         elif len(chart_data) == 1:
             st.markdown(f"""
-            <div style="padding:20px;text-align:center;color:#888;font-size:12px">
+            <div style="padding:20px;text-align:center;color:#888;font-size:12px;font-family:'JetBrains Mono',monospace">
                 First snapshot saved today ({chart_data[0]['date']}).<br>
                 Come back tomorrow to see the growth chart.
             </div>
             """, unsafe_allow_html=True)
         else:
             st.markdown("""
-            <div style="padding:20px;text-align:center;color:#666;font-size:12px">
+            <div style="padding:20px;text-align:center;color:#666;font-size:12px;font-family:'JetBrains Mono',monospace">
                 No data yet. Configure accounts to start tracking.
             </div>
             """, unsafe_allow_html=True)
 
     with col2:
-        # Determine bot statuses
-        like_status = "active" if st.session_state.like_bot_running else "idle"
-        follow_status = "active" if st.session_state.follow_bot_running else "idle"
-        unfollow_status = "active" if st.session_state.unfollow_bot_running else "idle"
-
-        like_label = "RUNNING" if like_status == "active" else "IDLE"
-        follow_label = "RUNNING" if follow_status == "active" else "IDLE"
-        unfollow_label = "RUNNING" if unfollow_status == "active" else "IDLE"
-
-        # Count log lines for progress
-        like_progress = f"{len(st.session_state.like_log_lines)} lines" if st.session_state.like_log_lines else "—"
-        follow_progress = f"{len(st.session_state.follow_log_lines)} lines" if st.session_state.follow_log_lines else "—"
-        unfollow_progress = f"{len(st.session_state.unfollow_log_lines)} lines" if st.session_state.unfollow_log_lines else "—"
-
-        st.markdown(f"""
-        <div class="panel">
+        # Bot Activity panel
+        st.markdown("""
+        <div class="panel" style="margin-top:20px">
             <div class="panel-header">
-                <span class="title">Bot Status</span>
+                <span class="title">Bot Activity</span>
             </div>
             <div class="panel-body">
-                <table class="data-table">
-                    <thead>
-                        <tr><th>Bot</th><th>Status</th><th>Progress</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>LIKE</td>
-                            <td><span class="tag {like_status}">{like_label}</span></td>
-                            <td>{like_progress}</td>
-                        </tr>
-                        <tr>
-                            <td>FOLLOW</td>
-                            <td><span class="tag {follow_status}">{follow_label}</span></td>
-                            <td>{follow_progress}</td>
-                        </tr>
-                        <tr>
-                            <td>UNFOLLOW</td>
-                            <td><span class="tag {unfollow_status}">{unfollow_label}</span></td>
-                            <td>{unfollow_progress}</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="metric">
+                    <div class="label">Likes Today</div>
+                    <div class="value cyan">0</div>
+                </div>
+                <div class="metric">
+                    <div class="label">Follows Today</div>
+                    <div class="value cyan">0</div>
+                </div>
+                <div class="metric">
+                    <div class="label">Unfollows Today</div>
+                    <div class="value cyan">0</div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Bot Status table (full width)
+    like_status = "active" if st.session_state.like_bot_running else "idle"
+    follow_status = "active" if st.session_state.follow_bot_running else "idle"
+    unfollow_status = "active" if st.session_state.unfollow_bot_running else "idle"
+
+    like_label = "RUNNING" if like_status == "active" else "IDLE"
+    follow_label = "RUNNING" if follow_status == "active" else "IDLE"
+    unfollow_label = "RUNNING" if unfollow_status == "active" else "IDLE"
+
+    st.markdown(f"""
+    <div class="panel" style="margin-top:20px">
+        <div class="panel-header">
+            <span class="title">Bot Status</span>
+        </div>
+        <div class="panel-body">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Bot</th><th>Status</th><th>Today</th><th>Errors</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>LIKE</td>
+                        <td><span class="tag {like_status}">{like_label}</span></td>
+                        <td>0 liked</td>
+                        <td>0</td>
+                    </tr>
+                    <tr>
+                        <td>FOLLOW</td>
+                        <td><span class="tag {follow_status}">{follow_label}</span></td>
+                        <td>0 followed</td>
+                        <td>0</td>
+                    </tr>
+                    <tr>
+                        <td>UNFOLLOW</td>
+                        <td><span class="tag {unfollow_status}">{unfollow_label}</span></td>
+                        <td>0 unfollowed</td>
+                        <td>0</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
             </div>
         </div>
         """, unsafe_allow_html=True)
