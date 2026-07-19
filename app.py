@@ -53,35 +53,31 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 }
 
 /* Topbar */
-/* Tabs - matches mockup 6-terminal.html */
-.stTabs [data-baseweb="tab-list"] {
+/* Sidebar - matches mockup 18-nav-sidebar.html */
+[data-testid="stSidebar"] {
     background: #111;
-    border: 1px solid #222;
-    border-radius: 0;
-    padding: 10px 20px;
-    margin-top: -1rem;
-    gap: 0;
+    border-right: 1px solid #222;
 }
-.stTabs [data-baseweb="tab"] {
+[data-testid="stSidebar"] [data-testid="stRadio"] > div {
+    gap: 4px;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] > div > label {
     color: #555;
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 1px;
-    padding: 8px 16px;
-    margin-left: 20px;
-    border-radius: 0;
-    background: transparent;
+    padding: 10px 12px;
+    border-radius: 2px;
+    cursor: pointer;
 }
-.stTabs [data-baseweb="tab"]:hover {
+[data-testid="stSidebar"] [data-testid="stRadio"] > div > label:hover {
     color: #c8c8c8;
-    background: transparent;
+    background: #1a1a1a;
 }
-.stTabs [aria-selected="true"] {
-    color: #00d4ff !important;
-    background: transparent !important;
-    border-bottom: none !important;
-    box-shadow: none !important;
+[data-testid="stSidebar"] [data-testid="stRadio"] > div > label[data-checked="true"] {
+    color: #00d4ff;
+    background: #1a1a1a;
 }
 .stTabs [data-baseweb="tab-border"] {
     display: none !important;
@@ -450,31 +446,29 @@ if "verification_results" not in st.session_state:
 
 
 # =============================================================
-# HEADER
+# SIDEBAR NAVIGATION
 # =============================================================
 
-st.markdown("""
-<div style="background:#111;border:1px solid #222;padding:12px 20px;margin:-2rem -2rem 2rem -2rem">
-    <span style="color:#00d4ff;font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-0.5px">bsky_growth</span>
-    <span style="color:#555;font-size:14px;font-family:'JetBrains Mono',monospace"> v1.0</span>
-</div>
-""", unsafe_allow_html=True)
+with st.sidebar:
+    st.markdown("""
+    <div style="margin-bottom:32px">
+        <span style="color:#00d4ff;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-0.5px">bsky_growth</span>
+        <span style="color:#555;font-size:18px;font-family:'JetBrains Mono',monospace"> v1.0</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-
-# =============================================================
-# NAVIGATION (functional tabs)
-# =============================================================
-
-tab_dashboard, tab_like, tab_follow, tab_unfollow, tab_settings = st.tabs([
-    "DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "SETTINGS"
-])
+    page = st.radio(
+        "Navigation",
+        ["DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "SETTINGS"],
+        label_visibility="collapsed",
+    )
 
 
 # =============================================================
 # DASHBOARD TAB
 # =============================================================
 
-with tab_dashboard:
+if page == "DASHBOARD":
     # Check if account is configured and verified
     if not st.session_state.handle or not st.session_state.password:
         st.info("Configure your account in the SETTINGS tab to see live stats here.")
@@ -663,7 +657,7 @@ with tab_dashboard:
 # LIKE TAB
 # =============================================================
 
-with tab_like:
+if page == "LIKE":
     st.markdown("""
     <div style="margin-bottom:20px">
         <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Like Bot</span>
@@ -788,7 +782,7 @@ with tab_like:
 # FOLLOW TAB (Placeholder)
 # =============================================================
 
-with tab_follow:
+if page == "FOLLOW":
     st.markdown("""
     <div style="margin-bottom:20px">
         <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Follow Bot</span>
@@ -956,7 +950,7 @@ with tab_follow:
 # UNFOLLOW TAB (Placeholder)
 # =============================================================
 
-with tab_unfollow:
+if page == "UNFOLLOW":
     st.markdown("""
     <div style="margin-bottom:20px">
         <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Unfollow Bot</span>
@@ -1129,7 +1123,7 @@ with tab_unfollow:
 # SETTINGS TAB
 # =============================================================
 
-with tab_settings:
+if page == "SETTINGS":
     st.markdown("""
     <div style="margin-bottom:20px">
         <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Account Configuration</span>
