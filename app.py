@@ -692,85 +692,94 @@ if page == "DASHBOARD":
             # Save snapshot
             save_snapshot(followers, following)
 
-            # Dashboard cards - 9 cards in 3 rows
-            # Row 1 - Core metrics
-            col1, col2, col3 = st.columns(3)
+            # Dashboard cards - asymmetric grid
+            # Row 1 - Hero cards (2 columns each)
+            col1, col2 = st.columns(2)
 
             with col1:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Followers</div>
-                    <div style="font-size:24px;font-weight:700;color:#c8c8c8">{followers:,}</div>
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
+                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Followers</div>
+                    <div style="font-size:36px;font-weight:700;color:#c8c8c8">{followers:,}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col2:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Following</div>
-                    <div style="font-size:24px;font-weight:700;color:#c8c8c8">{following:,}</div>
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
+                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Engagement Rate</div>
+                    <div style="font-size:36px;font-weight:700;color:{er_color}">{engagement_rate}%</div>
                 </div>
                 """, unsafe_allow_html=True)
+
+            # Row 2 - Standard cards (4 columns)
+            col3, col4, col5, col6 = st.columns(4)
 
             with col3:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Non-Followers</div>
-                    <div style="font-size:24px;font-weight:700;color:#c8c8c8">{non_followers:,}</div>
+                    <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Following</div>
+                    <div style="font-size:24px;font-weight:700;color:#c8c8c8">{following:,}</div>
                 </div>
                 """, unsafe_allow_html=True)
-
-            # Row 2 - Activity & Growth
-            col4, col5, col6 = st.columns(3)
 
             with col4:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Account Age</div>
-                    <div style="font-size:24px;font-weight:700;color:#c8c8c8">{account_age_days} days</div>
+                    <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Non-Followers</div>
+                    <div style="font-size:24px;font-weight:700;color:#c8c8c8">{non_followers:,}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col5:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Posts/Day</div>
-                    <div style="font-size:24px;font-weight:700;color:#c8c8c8">{posts_per_day}</div>
+                    <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Follow-back Rate</div>
+                    <div style="font-size:24px;font-weight:700;color:{fbr_color}">{follow_back_rate:.1f}%</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col6:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Avg Likes/Post</div>
-                    <div style="font-size:24px;font-weight:700;color:#c8c8c8">{avg_likes_per_post}</div>
+                    <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Mutual Follows</div>
+                    <div style="font-size:24px;font-weight:700;color:#c8c8c8">{mutual_follows:,}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Row 3 - Engagement & Network
-            col7, col8, col9 = st.columns(3)
+            # Row 3 - Secondary cards (4 columns)
+            col7, col8, col9, col10 = st.columns(4)
 
             with col7:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Engagement Rate</div>
-                    <div style="font-size:24px;font-weight:700;color:{er_color}">{engagement_rate}%</div>
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:16px;text-align:center">
+                    <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Account Age</div>
+                    <div style="font-size:20px;font-weight:700;color:#c8c8c8">{account_age_days}</div>
+                    <div style="font-size:10px;color:#666;margin-top:4px">days</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col8:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Follow-back Rate</div>
-                    <div style="font-size:24px;font-weight:700;color:{fbr_color}">{follow_back_rate:.1f}%</div>
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:16px;text-align:center">
+                    <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Posts/Day</div>
+                    <div style="font-size:20px;font-weight:700;color:#c8c8c8">{posts_per_day}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col9:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Mutual Follows</div>
-                    <div style="font-size:24px;font-weight:700;color:#c8c8c8">{mutual_follows:,}</div>
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:16px;text-align:center">
+                    <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Avg Likes/Post</div>
+                    <div style="font-size:20px;font-weight:700;color:#c8c8c8">{avg_likes_per_post}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col10:
+                st.markdown(f"""
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:16px;text-align:center">
+                    <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Avg Reposts/Post</div>
+                    <div style="font-size:20px;font-weight:700;color:#c8c8c8">{avg_reposts_per_post}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
