@@ -711,121 +711,49 @@ if page == "DASHBOARD":
     history = load_history()
     chart_data = get_chart_data(history)
 
-    # Two-column layout (matching mockup)
-    col1, col2 = st.columns([2, 1])
-
-    with col1:
-        # Follower Growth chart
-        st.markdown("""
-        <div class="panel" style="margin-top:20px">
-            <div class="panel-header">
-                <span class="title">Follower Growth — 30d</span>
-                <span class="status live">LIVE</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        if len(chart_data) >= 2:
-            # Show line chart with Streamlit
-            import pandas as pd
-            df = pd.DataFrame(chart_data)
-            df["date"] = pd.to_datetime(df["date"])
-            df = df.set_index("date")
-
-            st.line_chart(df[["followers"]], use_container_width=True)
-
-            # Show stats
-            first = chart_data[0]
-            last = chart_data[-1]
-            change = last["followers"] - first["followers"]
-            days = len(chart_data)
-
-            st.markdown(f"""
-            <div style="font-size:11px;color:#333;margin-top:8px;font-family:'JetBrains Mono',monospace">
-                {days} days tracked · {change:+,} followers · since {first['date']}
-            </div>
-            """, unsafe_allow_html=True)
-        elif len(chart_data) == 1:
-            st.markdown(f"""
-            <div style="padding:20px;text-align:center;color:#888;font-size:12px;font-family:'JetBrains Mono',monospace">
-                First snapshot saved today ({chart_data[0]['date']}).<br>
-                Come back tomorrow to see the growth chart.
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown("""
-            <div style="padding:20px;text-align:center;color:#666;font-size:12px;font-family:'JetBrains Mono',monospace">
-                No data yet. Configure accounts to start tracking.
-            </div>
-            """, unsafe_allow_html=True)
-
-    with col2:
-        # Bot Activity panel
-        st.markdown("""
-        <div class="panel" style="margin-top:20px">
-            <div class="panel-header">
-                <span class="title">Bot Activity</span>
-            </div>
-            <div class="panel-body">
-                <div class="metric">
-                    <div class="label">Likes Today</div>
-                    <div class="value cyan">0</div>
-                </div>
-                <div class="metric">
-                    <div class="label">Follows Today</div>
-                    <div class="value cyan">0</div>
-                </div>
-                <div class="metric">
-                    <div class="label">Unfollows Today</div>
-                    <div class="value cyan">0</div>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # Bot Status table (full width)
-    like_status = "active" if st.session_state.like_runner.running else "idle"
-    follow_status = "active" if st.session_state.follow_runner.running else "idle"
-    unfollow_status = "active" if st.session_state.unfollow_runner.running else "idle"
-
-    like_label = "RUNNING" if like_status == "active" else "IDLE"
-    follow_label = "RUNNING" if follow_status == "active" else "IDLE"
-    unfollow_label = "RUNNING" if unfollow_status == "active" else "IDLE"
-
-    st.markdown(f"""
+    # Follower Growth chart (full width)
+    st.markdown("""
     <div class="panel" style="margin-top:20px">
         <div class="panel-header">
-            <span class="title">Bot Status</span>
-        </div>
-        <div class="panel-body">
-            <table class="data-table">
-                <thead>
-                    <tr><th>Bot</th><th>Status</th><th>Today</th><th>Errors</th></tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>LIKE</td>
-                        <td><span class="tag {like_status}">{like_label}</span></td>
-                        <td>0 liked</td>
-                        <td>0</td>
-                    </tr>
-                    <tr>
-                        <td>FOLLOW</td>
-                        <td><span class="tag {follow_status}">{follow_label}</span></td>
-                        <td>0 followed</td>
-                        <td>0</td>
-                    </tr>
-                    <tr>
-                        <td>UNFOLLOW</td>
-                        <td><span class="tag {unfollow_status}">{unfollow_label}</span></td>
-                        <td>0 unfollowed</td>
-                        <td>0</td>
-                    </tr>
-                </tbody>
-            </table>
+            <span class="title">Follower Growth — 30d</span>
+            <span class="status live">LIVE</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+    if len(chart_data) >= 2:
+        # Show line chart with Streamlit
+        import pandas as pd
+        df = pd.DataFrame(chart_data)
+        df["date"] = pd.to_datetime(df["date"])
+        df = df.set_index("date")
+
+        st.line_chart(df[["followers"]], use_container_width=True)
+
+        # Show stats
+        first = chart_data[0]
+        last = chart_data[-1]
+        change = last["followers"] - first["followers"]
+        days = len(chart_data)
+
+        st.markdown(f"""
+        <div style="font-size:11px;color:#333;margin-top:8px;font-family:'JetBrains Mono',monospace">
+            {days} days tracked · {change:+,} followers · since {first['date']}
+        </div>
+        """, unsafe_allow_html=True)
+    elif len(chart_data) == 1:
+        st.markdown(f"""
+        <div style="padding:20px;text-align:center;color:#888;font-size:12px;font-family:'JetBrains Mono',monospace">
+            First snapshot saved today ({chart_data[0]['date']}).<br>
+            Come back tomorrow to see the growth chart.
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="padding:20px;text-align:center;color:#666;font-size:12px;font-family:'JetBrains Mono',monospace">
+            No data yet. Configure accounts to start tracking.
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # =============================================================
