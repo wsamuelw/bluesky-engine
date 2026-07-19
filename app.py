@@ -5,7 +5,24 @@ Streamlit app for managing Bluesky follow/like/unfollow bots.
 
 import streamlit as st
 import time
+import subprocess
 from datetime import datetime
+
+
+def get_version():
+    """Get version from git commit hash."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd="/Users/samuel/projects/bluesky-engine"
+        )
+        if result.returncode == 0:
+            return f"v{result.stdout.strip()}"
+    except:
+        pass
+    return "v1.0"
 
 from utils.auth import login
 from utils.stats import get_stats
@@ -469,10 +486,11 @@ if "active_page" not in st.session_state:
 
 with st.sidebar:
     # Brand name
-    st.markdown("""
+    version = get_version()
+    st.markdown(f"""
     <div style="margin-bottom:32px">
         <span style="color:#00d4ff;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-0.5px">bsky_growth</span>
-        <span style="color:#555;font-size:18px;font-family:'JetBrains Mono',monospace"> v1.0</span>
+        <span style="color:#555;font-size:18px;font-family:'JetBrains Mono',monospace"> {version}</span>
     </div>
     <div style="border-top:1px solid #1a1a1a;margin-bottom:16px"></div>
     <div style="color:#444;font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px">Mode</div>
