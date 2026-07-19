@@ -786,13 +786,6 @@ if page == "LIKE":
     if not st.session_state.handle or not st.session_state.password:
         st.warning("No account configured. Go to SETTINGS tab to add your account first.")
     else:
-        # Show account
-        st.markdown(f"""
-        <div style="margin-bottom:20px">
-            <span style="display:inline-block;background:#1a1a1a;border:1px solid #333;padding:6px 14px;border-radius:2px;font-size:13px;font-family:JetBrains Mono,monospace">@{st.session_state.handle}</span>
-        </div>
-        """, unsafe_allow_html=True)
-
         # Config
         col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -944,31 +937,14 @@ if page == "FOLLOW":
         </div>
         """, unsafe_allow_html=True)
 
-        col1, col2, col3 = st.columns([2, 1, 2])
-
-        with col1:
-            st.markdown(f"""
-            <div style="padding:10px 0;font-size:14px;font-weight:600;color:#c8c8c8">
-                @{st.session_state.handle}
-            </div>
-            """, unsafe_allow_html=True)
-
-        with col2:
-            st.markdown(f"""
-            <div style="padding:10px 0;font-size:14px;color:#888;text-align:center">
-                →
-            </div>
-            """, unsafe_allow_html=True)
-
-        with col3:
-            target = st.text_input(
-                f"TARGET FOR @{st.session_state.handle}",
-                value=st.session_state.target,
-                placeholder="karpathy.bsky.social",
-                key="follow_target",
-                label_visibility="collapsed",
-            )
-            st.session_state.target = target
+        # Target input
+        target = st.text_input(
+            "TARGET ACCOUNT",
+            value=st.session_state.target,
+            placeholder="karpathy.bsky.social",
+            key="follow_target",
+        )
+        st.session_state.target = target
 
         # Config
         st.markdown("""
@@ -1132,13 +1108,6 @@ if page == "UNFOLLOW":
     if not st.session_state.handle or not st.session_state.password:
         st.warning("No account configured. Go to SETTINGS tab to add your account first.")
     else:
-        # Show account
-        st.markdown(f"""
-        <div style="margin-bottom:20px">
-            <span style="display:inline-block;background:#1a1a1a;border:1px solid #333;padding:6px 14px;border-radius:2px;font-size:13px;font-family:JetBrains Mono,monospace">@{st.session_state.handle}</span>
-        </div>
-        """, unsafe_allow_html=True)
-
         # Settings
         st.markdown("""
         <div style="margin-bottom:10px">
