@@ -213,11 +213,13 @@ section[data-testid="stSidebar"] button[kind="tertiary"] {
     color: #999 !important;
     -webkit-text-fill-color: #999 !important;
     font-family: 'JetBrains Mono', monospace !important;
-    font-size: 9px !important;
+    font-size: 12px !important;
     -webkit-text-size-adjust: 100% !important;
     text-transform: uppercase !important;
     letter-spacing: 1px !important;
     padding: 6px 8px !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
 }
 section[data-testid="stSidebar"] button[kind="secondary"] p,
 section[data-testid="stSidebar"] button[kind="primary"] p,
@@ -225,7 +227,8 @@ section[data-testid="stSidebar"] button[kind="tertiary"] p,
 section[data-testid="stSidebar"] button[kind="secondary"] span,
 section[data-testid="stSidebar"] button[kind="primary"] span,
 section[data-testid="stSidebar"] button[kind="tertiary"] span {
-    font-size: 9px !important;
+    font-size: 12px !important;
+    text-align: left !important;
     text-align: left !important;
     justify-content: flex-start !important;
     border-radius: 2px !important;
