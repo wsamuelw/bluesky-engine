@@ -1210,12 +1210,6 @@ if page == "SETTINGS":
         )
         st.session_state.password = password
 
-    # Verification status
-    if st.session_state.verified:
-        st.markdown("✅ Account verified")
-    else:
-        st.markdown("— Not verified")
-
     # Save button with auth verification
     if st.button("SAVE & VERIFY", key="save_accounts"):
         handle = st.session_state.handle.strip()
@@ -1230,9 +1224,16 @@ if page == "SETTINGS":
                 profile = client.app.bsky.actor.get_profile({"actor": handle})
                 st.session_state.verified = True
                 st.success(f"Authenticated as @{profile.handle} · {profile.followers_count or 0:,} followers")
+                st.rerun()
             except Exception as e:
                 st.session_state.verified = False
                 st.error(f"Authentication failed: {e}")
+
+    # Verification status - shows AFTER button handler
+    if st.session_state.verified:
+        st.markdown("✅ Account verified")
+    else:
+        st.markdown("— Not verified")
 
     # Instructions
     st.markdown("""
