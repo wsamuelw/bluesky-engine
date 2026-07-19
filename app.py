@@ -7,6 +7,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import time
 import subprocess
+import threading
 from datetime import datetime
 
 
@@ -31,6 +32,109 @@ from utils.tracker import load_history, save_snapshot, get_chart_data
 from bots.like_bot import like_bot_run
 from bots.follow_bot import follow_bot_run
 from bots.unfollow_bot import unfollow_bot_run, get_unfollow_preview
+
+
+# =============================================================
+# THREAD-SAFE BOT RUNNER
+# =============================================================
+
+class BotRunner:
+    """Manages bot execution in a background thread with thread-safe state."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._thread = None
+        self._running = False
+        self._stop_requested = False
+        self._log_lines = []
+        self._results = None
+        self._error = None
+
+    @property
+    def running(self):
+        with self._lock:
+            return self._running
+
+    @property
+    def stop_requested(self):
+        with self._lock:
+            return self._stop_requested
+
+    def start(self, bot_func, *args, **kwargs):
+        """Start bot in background thread."""
+        with self._lock:
+            if self._running:
+                return False
+            self._running = True
+            self._stop_requested = False
+            self._log_lines = []
+            self._results = None
+            self._error = None
+
+        def run():
+            try:
+                # Add stop_check to kwargs
+                kwargs['stop_check'] = lambda: self.stop_requested
+                # Create thread-safe log callback
+                def log_callback(line):
+                    with self._lock:
+                        self._log_lines.append(line)
+                kwargs['log_callback'] = log_callback
+                # Run the bot
+                results = bot_func(*args, **kwargs)
+                with self._lock:
+                    self._results = results
+            except Exception as e:
+                with self._lock:
+                    self._error = str(e)
+            finally:
+                with self._lock:
+                    self._running = False
+
+        self._thread = threading.Thread(target=run, daemon=True)
+        self._thread.start()
+        return True
+
+    def stop(self):
+        """Request bot to stop."""
+        with self._lock:
+            self._stop_requested = True
+
+    def get_logs(self):
+        """Get current log lines (thread-safe)."""
+        with self._lock:
+            return self._log_lines.copy()
+
+    def get_results(self):
+        """Get bot results (thread-safe)."""
+        with self._lock:
+            return self._results
+
+    def get_error(self):
+        """Get error message (thread-safe)."""
+        with self._lock:
+            return self._error
+
+    def clear(self):
+        """Clear all state."""
+        with self._lock:
+            self._running = False
+            self._stop_requested = False
+            self._log_lines = []
+            self._results = None
+            self._error = None
+
+
+# Global bot runners (persists across Streamlit reruns)
+if 'like_runner' not in st.session_state:
+    st.session_state.like_runner = BotRunner()
+
+if 'follow_runner' not in st.session_state:
+    st.session_state.follow_runner = BotRunner()
+
+if 'unfollow_runner' not in st.session_state:
+    st.session_state.unfollow_runner = BotRunner()
+
 
 # =============================================================
 # PAGE CONFIG
@@ -462,29 +566,22 @@ if "verified" not in st.session_state:
 if "bot_running" not in st.session_state:
     st.session_state.bot_running = False
 
-# Per-bot running states
-if "like_bot_running" not in st.session_state:
-    st.session_state.like_bot_running = False
-
+# Per-bot running states (now managed by BotRunner)
 if "follow_bot_running" not in st.session_state:
     st.session_state.follow_bot_running = False
 
 if "unfollow_bot_running" not in st.session_state:
     st.session_state.unfollow_bot_running = False
 
-# Per-bot stop flags
-if "like_bot_stop" not in st.session_state:
-    st.session_state.like_bot_stop = False
-
+# Per-bot stop flags (now managed by BotRunner)
 if "follow_bot_stop" not in st.session_state:
     st.session_state.follow_bot_stop = False
 
 if "unfollow_bot_stop" not in st.session_state:
     st.session_state.unfollow_bot_stop = False
 
-# Separate log lines for each bot
-if "like_log_lines" not in st.session_state:
-    st.session_state.like_log_lines = []
+# Separate log lines for each bot (now managed by BotRunner)
+# like_log_lines removed - managed by like_runner
 
 if "follow_log_lines" not in st.session_state:
     st.session_state.follow_log_lines = []
@@ -675,9 +772,9 @@ if page == "DASHBOARD":
         """, unsafe_allow_html=True)
 
     # Bot Status table (full width)
-    like_status = "active" if st.session_state.like_bot_running else "idle"
-    follow_status = "active" if st.session_state.follow_bot_running else "idle"
-    unfollow_status = "active" if st.session_state.unfollow_bot_running else "idle"
+    like_status = "active" if st.session_state.like_runner.running else "idle"
+    follow_status = "active" if st.session_state.follow_runner.running else "idle"
+    unfollow_status = "active" if st.session_state.unfollow_runner.running else "idle"
 
     like_label = "RUNNING" if like_status == "active" else "IDLE"
     follow_label = "RUNNING" if follow_status == "active" else "IDLE"
@@ -762,21 +859,24 @@ if page == "LIKE":
             delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=10, step=1,
                 help="Maximum seconds between likes. Random delay between min and max.")
 
+        # Get runner reference
+        runner = st.session_state.like_runner
+
         # Toggle button - changes between RUN and STOP
         col_btn, col_info = st.columns([1, 3])
 
         with col_btn:
-            if st.session_state.like_bot_running:
+            if runner.running:
                 # Bot is running - show STOP button
                 if st.button("⏹ STOP", key="stop_like", use_container_width=True, type="primary"):
-                    st.session_state.like_bot_stop = True
+                    runner.stop()
                     st.rerun()
             else:
                 # Bot is stopped - show RUN button
                 run_clicked = st.button("▶ RUN LIKE", key="run_like", use_container_width=True)
 
         with col_info:
-            status_text = "RUNNING — click STOP to halt" if st.session_state.like_bot_running else f"@{st.session_state.handle} · batch={batch_size} · delay={delay_min}-{delay_max}s"
+            status_text = "RUNNING — click STOP to halt" if runner.running else f"@{st.session_state.handle} · batch={batch_size} · delay={delay_min}-{delay_max}s"
             st.markdown(f"""
             <div style="padding:10px 0;font-size:12px;color:#888">
                 <strong style="color:#c8c8c8">{status_text}</strong>
@@ -796,69 +896,68 @@ if page == "LIKE":
         log_placeholder = st.empty()
 
         # Run the bot (when RUN button clicked)
-        if not st.session_state.like_bot_running and run_clicked:
+        if not runner.running and run_clicked:
             # Validate delays
             if delay_min > delay_max:
                 st.error("Min delay must be <= max delay")
             else:
-                st.session_state.like_bot_running = True
-                st.session_state.like_bot_stop = False
-                st.session_state.like_log_lines = []
-                st.rerun()
-
-        # Bot execution (when running)
-        if st.session_state.like_bot_running and not st.session_state.like_bot_stop:
-            # Create single account list for the bot
-            account = [{"handle": st.session_state.handle, "password": st.session_state.password, "enabled": True}]
-
-            # Callback to update log display in real-time
-            def log_callback(line):
-                st.session_state.like_log_lines.append(line)
-                log_text = "\n".join(st.session_state.like_log_lines[-50:])
-                log_placeholder.code(log_text, language="bash")
-
-            # Stop check function
-            def check_stop():
-                return st.session_state.like_bot_stop
-
-            # Run the bot
-            try:
-                results = like_bot_run(
+                # Start bot in background thread
+                account = [{"handle": st.session_state.handle, "password": st.session_state.password, "enabled": True}]
+                runner.start(
+                    like_bot_run,
                     account,
                     batch_size,
                     likes_per_user,
                     delay_min,
                     delay_max,
-                    log_callback=log_callback,
-                    stop_check=check_stop,
                 )
-                # Show summary
+                st.rerun()
+
+        # Bot is running - show logs and auto-refresh
+        if runner.running:
+            # Display current logs
+            logs = runner.get_logs()
+            if logs:
+                log_text = "\n".join(logs[-50:])
+                log_placeholder.code(log_text, language="bash")
+            else:
+                log_placeholder.code("Starting bot...", language="bash")
+
+            # Auto-refresh every 2 seconds to show new logs
+            time.sleep(2)
+            st.rerun()
+
+        # Bot finished - show results
+        if not runner.running:
+            # Check for results
+            results = runner.get_results()
+            error = runner.get_error()
+
+            if error:
+                error_msg = error.lower()
+                if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
+                    st.error(f"Authentication failed: {error}. Check your credentials in SETTINGS.")
+                elif "rate" in error_msg or "429" in error_msg:
+                    st.error(f"Rate limited: {error}. Wait a few minutes and try again.")
+                elif "timeout" in error_msg or "connection" in error_msg:
+                    st.error(f"Network error: {error}. Check your connection and try again.")
+                else:
+                    st.error(f"Bot error: {error}")
+                runner.clear()
+            elif results:
                 total_liked = sum(r["liked"] for r in results)
                 total_skipped = sum(r["skipped"] for r in results)
                 total_errors = sum(r["errors"] for r in results)
-                if st.session_state.like_bot_stop:
+                if runner.stop_requested:
                     st.warning(f"Like bot stopped: {total_liked} liked, {total_skipped} skipped, {total_errors} errors")
                 else:
                     st.success(f"Like bot complete: {total_liked} liked, {total_skipped} skipped, {total_errors} errors")
-            except Exception as e:
-                error_msg = str(e).lower()
-                if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
-                    st.error(f"Authentication failed: {e}. Check your credentials in SETTINGS.")
-                elif "rate" in error_msg or "429" in error_msg:
-                    st.error(f"Rate limited: {e}. Wait a few minutes and try again.")
-                elif "timeout" in error_msg or "connection" in error_msg:
-                    st.error(f"Network error: {e}. Check your connection and try again.")
-                else:
-                    st.error(f"Bot error: {e}")
+                runner.clear()
 
-            st.session_state.like_bot_running = False
-            st.session_state.like_bot_stop = False
-            st.rerun()
-
-        # Show existing log when not running
-        if not st.session_state.like_bot_running:
-            if st.session_state.like_log_lines:
-                log_text = "\n".join(st.session_state.like_log_lines[-50:])
+            # Show existing log
+            logs = runner.get_logs()
+            if logs:
+                log_text = "\n".join(logs[-50:])
                 log_placeholder.code(log_text, language="bash")
             else:
                 log_placeholder.code("Waiting to start...", language="bash")
