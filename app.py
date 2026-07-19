@@ -81,7 +81,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 [data-testid="stSidebarCollapseButton"] {
     display: none !important;
 }
-/* Sidebar nav buttons - override everything */
+/* Sidebar nav buttons */
 section[data-testid="stSidebar"] button {
     background: transparent !important;
     border: none !important;
@@ -102,7 +102,7 @@ section[data-testid="stSidebar"] button:hover {
     color: #c8c8c8 !important;
     background: #1a1a1a !important;
 }
-/* Active button */
+/* Active button - same blue as brand */
 section[data-testid="stSidebar"] button[kind="primary"] {
     color: #00d4ff !important;
     background: #1a1a1a !important;
