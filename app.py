@@ -4,6 +4,7 @@ Streamlit app for managing Bluesky follow/like/unfollow bots.
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 import time
 import subprocess
 from datetime import datetime
@@ -488,14 +489,12 @@ with st.sidebar:
     version = get_version()
     st.markdown(f"""
     <div style="margin-bottom:32px">
-        <span style="color:#00d4ff;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-0.5px">bsky_growth</span>
-        <span style="color:#555;font-size:18px;font-family:'JetBrains Mono',monospace"> {version}</span>
+        <span style="color:#00d4ff;font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-0.5px">bsky_growth</span>
+        <span style="color:#555;font-size:14px;font-family:'JetBrains Mono',monospace"> {version}</span>
     </div>
-    <div style="border-top:1px solid #1a1a1a;margin-bottom:16px"></div>
-    <div style="color:#444;font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px">Mode</div>
     """, unsafe_allow_html=True)
 
-    # Navigation buttons - mockup style
+    # Navigation buttons
     for nav_item in ["DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "SETTINGS"]:
         is_active = st.session_state.active_page == nav_item
         if st.button(
