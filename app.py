@@ -59,36 +59,31 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     border-right: 1px solid #222;
     padding: 20px 16px;
 }
-[data-testid="stSidebar"] [data-testid="stRadio"] > div {
-    gap: 4px;
-    margin-top: 32px;
-}
-[data-testid="stSidebar"] [data-testid="stRadio"] > div > label {
+/* Sidebar nav buttons */
+[data-testid="stSidebar"] [data-testid="stButton"] button {
+    background: transparent;
+    border: none;
+    border-left: 3px solid transparent;
     color: #555;
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 1px;
     padding: 10px 12px;
-    border-radius: 2px;
-    cursor: pointer;
+    text-align: left;
     margin-bottom: 4px;
+    border-radius: 0 2px 2px 0;
+    transition: all 0.15s ease;
 }
-[data-testid="stSidebar"] [data-testid="stRadio"] > div > label:hover {
+[data-testid="stSidebar"] [data-testid="stButton"] button:hover {
     color: #c8c8c8;
     background: #1a1a1a;
 }
-[data-testid="stSidebar"] [data-testid="stRadio"] > div > label[data-checked="true"] {
+/* Primary button = active state */
+[data-testid="stSidebar"] [data-testid="stButton"] button[data-testid="stBaseButton-primary"] {
     color: #00d4ff;
+    border-left: 3px solid #00d4ff;
     background: #1a1a1a;
-}
-/* Hide radio button circles */
-[data-testid="stSidebar"] [data-testid="stRadio"] > div > label > div:first-child {
-    display: none;
-}
-/* Hide radio button text wrapper */
-[data-testid="stSidebar"] [data-testid="stRadio"] > div > label > div:last-child {
-    margin-left: 0;
 }
 .stTabs [data-baseweb="tab-border"] {
     display: none !important;
@@ -460,19 +455,34 @@ if "verification_results" not in st.session_state:
 # SIDEBAR NAVIGATION
 # =============================================================
 
+# Initialize active page
+if "active_page" not in st.session_state:
+    st.session_state.active_page = "DASHBOARD"
+
 with st.sidebar:
+    # Brand name
     st.markdown("""
     <div style="margin-bottom:32px">
         <span style="color:#00d4ff;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-0.5px">bsky_growth</span>
         <span style="color:#555;font-size:18px;font-family:'JetBrains Mono',monospace"> v1.0</span>
     </div>
+    <div style="border-top:1px solid #1a1a1a;margin-bottom:16px"></div>
+    <div style="color:#444;font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px">Mode</div>
     """, unsafe_allow_html=True)
 
-    page = st.radio(
-        "Navigation",
-        ["DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "SETTINGS"],
-        label_visibility="collapsed",
-    )
+    # Navigation buttons - mockup style
+    for nav_item in ["DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "SETTINGS"]:
+        is_active = st.session_state.active_page == nav_item
+        if st.button(
+            nav_item,
+            key=f"nav_{nav_item}",
+            use_container_width=True,
+            type="primary" if is_active else "secondary"
+        ):
+            st.session_state.active_page = nav_item
+            st.rerun()
+
+page = st.session_state.active_page
 
 
 # =============================================================
