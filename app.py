@@ -675,11 +675,21 @@ if page == "DASHBOARD":
             else:
                 fbr_color = "#f87171"  # red
 
+            # Calculate growth rate from history
+            history = load_history()
+            chart_data = get_chart_data(history)
+            growth_rate = 0
+            if len(chart_data) >= 2:
+                days_tracked = len(chart_data)
+                total_growth = chart_data[-1]["followers"] - chart_data[0]["followers"]
+                growth_rate = total_growth / days_tracked if days_tracked > 0 else 0
+
             # Save snapshot
             save_snapshot(followers, following)
 
-            # Dashboard cards - one metric per card
-            col1, col2, col3, col4, col5 = st.columns(5)
+            # Dashboard cards - one metric per card (6 cards in 2 rows)
+            # Row 1
+            col1, col2, col3 = st.columns(3)
 
             with col1:
                 st.markdown(f"""
@@ -705,6 +715,9 @@ if page == "DASHBOARD":
                 </div>
                 """, unsafe_allow_html=True)
 
+            # Row 2
+            col4, col5, col6 = st.columns(3)
+
             with col4:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
@@ -714,6 +727,14 @@ if page == "DASHBOARD":
                 """, unsafe_allow_html=True)
 
             with col5:
+                st.markdown(f"""
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
+                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Growth Rate</div>
+                    <div style="font-size:24px;font-weight:700;color:#4ade80">{growth_rate:+.1f}/day</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col6:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
                     <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Non-Followers</div>
