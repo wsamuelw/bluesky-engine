@@ -89,7 +89,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    color: #555 !important;
+    color: #999 !important;
     font-family: 'JetBrains Mono', monospace !important;
     font-size: 12px !important;
     text-transform: uppercase !important;
