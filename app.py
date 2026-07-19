@@ -491,60 +491,17 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # Navigation using custom HTML component with JS click handling
-    active_page = st.session_state.active_page
-    nav_items = ["DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "SETTINGS"]
-
-    # Create the sidebar HTML with click handling
-    sidebar_html = """
-    <div id="sidebar-nav">
-    """
-
-    for item in nav_items:
-        is_active = "active" if item == active_page else ""
-        sidebar_html += f'<div class="nav-item {is_active}" data-page="{item}" onclick="selectPage(\'{item}\')">{item}</div>'
-
-    sidebar_html += """
-    </div>
-    <style>
-        .nav-item {
-            color: #999;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 10px 12px;
-            margin-bottom: 4px;
-            cursor: pointer;
-            border-radius: 2px;
-            font-family: 'JetBrains Mono', monospace;
-        }
-        .nav-item:hover {
-            color: #c8c8c8;
-            background: #1a1a1a;
-        }
-        .nav-item.active {
-            color: #00d4ff;
-            background: #1a1a1a;
-        }
-    </style>
-    <script>
-        function selectPage(page) {
-            // Send message to parent Streamlit window
-            window.parent.postMessage({
-                type: 'streamlit:setComponentValue',
-                value: page
-            }, '*');
-        }
-    </script>
-    """
-
-    # Render the sidebar component
-    selected = components.html(sidebar_html, height=350, scrolling=False)
-
-    # If a selection was made, update session state
-    if selected and selected != st.session_state.active_page:
-        st.session_state.active_page = selected
-        st.rerun()
+    # Navigation buttons
+    for nav_item in ["DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "SETTINGS"]:
+        is_active = st.session_state.active_page == nav_item
+        if st.button(
+            nav_item,
+            key=f"nav_{nav_item}",
+            use_container_width=True,
+            type="primary" if is_active else "secondary"
+        ):
+            st.session_state.active_page = nav_item
+            st.rerun()
 
 page = st.session_state.active_page
 
