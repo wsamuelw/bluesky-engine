@@ -666,6 +666,9 @@ if page == "DASHBOARD":
             account_age_days = stats["account_age_days"]
             posts_per_day = stats["posts_per_day"]
             engagement_rate = stats["engagement_rate"]
+            mutual_follows = stats["mutual_follows"]
+            most_liked_post = stats["most_liked_post"]
+            avg_likes_per_post = stats["avg_likes_per_post"]
             non_followers = following - followers
 
             # Calculate follow-back rate
@@ -690,8 +693,8 @@ if page == "DASHBOARD":
             # Save snapshot
             save_snapshot(followers, following)
 
-            # Dashboard cards - one metric per card (8 cards in 2 rows)
-            # Row 1
+            # Dashboard cards - one metric per card (12 cards in 3 rows)
+            # Row 1 - Core metrics
             col1, col2, col3, col4 = st.columns(4)
 
             with col1:
@@ -726,7 +729,7 @@ if page == "DASHBOARD":
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Row 2
+            # Row 2 - Growth & Activity
             col5, col6, col7, col8 = st.columns(4)
 
             with col5:
@@ -758,6 +761,41 @@ if page == "DASHBOARD":
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
                     <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Engagement Rate</div>
                     <div style="font-size:24px;font-weight:700;color:{er_color}">{engagement_rate}%</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # Row 3 - Network & Content
+            col9, col10, col11, col12 = st.columns(4)
+
+            with col9:
+                st.markdown(f"""
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
+                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Mutual Follows</div>
+                    <div style="font-size:24px;font-weight:700;color:#4ade80">{mutual_follows:,}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col10:
+                st.markdown(f"""
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
+                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Most Liked Post</div>
+                    <div style="font-size:24px;font-weight:700;color:#fbbf24">{most_liked_post:,}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col11:
+                st.markdown(f"""
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
+                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Avg Likes/Post</div>
+                    <div style="font-size:24px;font-weight:700;color:#fbbf24">{avg_likes_per_post}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col12:
+                st.markdown(f"""
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
+                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Follow-back Rate</div>
+                    <div style="font-size:24px;font-weight:700;color:{fbr_color}">{follow_back_rate:.1f}%</div>
                 </div>
                 """, unsafe_allow_html=True)
 
