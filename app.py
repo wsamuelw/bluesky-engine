@@ -799,48 +799,6 @@ if page == "DASHBOARD":
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Follower Growth Chart
-            history = load_history()
-            chart_data = get_chart_data(history)
-
-            if len(chart_data) >= 2:
-                st.markdown("""
-                <div style="margin-top:30px;margin-bottom:10px">
-                    <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Follower Growth</span>
-                </div>
-                """, unsafe_allow_html=True)
-
-                import pandas as pd
-                df = pd.DataFrame(chart_data)
-                df["date"] = pd.to_datetime(df["date"])
-                df = df.set_index("date")
-
-                st.bar_chart(df[["followers"]], use_container_width=True)
-
-                # Show summary
-                first = chart_data[0]
-                last = chart_data[-1]
-                change = last["followers"] - first["followers"]
-                days = len(chart_data)
-
-                st.markdown(f"""
-                <div style="font-size:11px;color:#888;margin-top:8px;font-family:'JetBrains Mono',monospace">
-                    {days} days tracked · {change:+,} followers · since {first['date']}
-                </div>
-                """, unsafe_allow_html=True)
-            elif len(chart_data) == 1:
-                st.markdown("""
-                <div style="margin-top:30px;margin-bottom:10px">
-                    <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Follower Growth</span>
-                </div>
-                """, unsafe_allow_html=True)
-                st.markdown(f"""
-                <div style="padding:20px;text-align:center;color:#888;font-size:12px;font-family:'JetBrains Mono',monospace">
-                    First snapshot saved today ({chart_data[0]['date']}).<br>
-                    Come back tomorrow to see the growth chart.
-                </div>
-                """, unsafe_allow_html=True)
-
         except Exception as e:
             st.error(f"Failed to fetch stats: {str(e)[:200]}")
 
