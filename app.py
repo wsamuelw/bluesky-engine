@@ -136,6 +136,24 @@ if 'unfollow_runner' not in st.session_state:
     st.session_state.unfollow_runner = BotRunner()
 
 
+def any_bot_running():
+    """Check if any bot is currently running."""
+    return (st.session_state.like_runner.running or
+            st.session_state.follow_runner.running or
+            st.session_state.unfollow_runner.running)
+
+
+def get_running_bot_name():
+    """Get the name of the currently running bot."""
+    if st.session_state.like_runner.running:
+        return "LIKE"
+    elif st.session_state.follow_runner.running:
+        return "FOLLOW"
+    elif st.session_state.unfollow_runner.running:
+        return "UNFOLLOW"
+    return None
+
+
 # =============================================================
 # PAGE CONFIG
 # =============================================================
@@ -567,27 +585,9 @@ if "bot_running" not in st.session_state:
     st.session_state.bot_running = False
 
 # Per-bot running states (now managed by BotRunner)
-if "follow_bot_running" not in st.session_state:
-    st.session_state.follow_bot_running = False
-
-if "unfollow_bot_running" not in st.session_state:
-    st.session_state.unfollow_bot_running = False
-
-# Per-bot stop flags (now managed by BotRunner)
-if "follow_bot_stop" not in st.session_state:
-    st.session_state.follow_bot_stop = False
-
-if "unfollow_bot_stop" not in st.session_state:
-    st.session_state.unfollow_bot_stop = False
-
-# Separate log lines for each bot (now managed by BotRunner)
-# like_log_lines removed - managed by like_runner
-
-if "follow_log_lines" not in st.session_state:
-    st.session_state.follow_log_lines = []
-
-if "unfollow_log_lines" not in st.session_state:
-    st.session_state.unfollow_log_lines = []
+# follow_bot_running, unfollow_bot_running - managed by runners
+# follow_bot_stop, unfollow_bot_stop - managed by runners
+# Log lines - managed by runners
 
 # Verification results
 if "verification_results" not in st.session_state:
@@ -897,8 +897,12 @@ if page == "LIKE":
 
         # Run the bot (when RUN button clicked)
         if not runner.running and run_clicked:
+            # Check if another bot is running
+            if any_bot_running():
+                running_bot = get_running_bot_name()
+                st.error(f"Cannot start Like Bot — {running_bot} Bot is already running. Stop it first or wait for it to finish.")
             # Validate delays
-            if delay_min > delay_max:
+            elif delay_min > delay_max:
                 st.error("Min delay must be <= max delay")
             else:
                 # Start bot in background thread
@@ -1037,18 +1041,27 @@ if page == "FOLLOW":
 
         auto_like = st.checkbox("Auto-like posts after following", value=True)
 
-        # Run button
+        # Get runner reference
+        runner = st.session_state.follow_runner
+
+        # Toggle button - changes between RUN and STOP
         col_btn, col_info = st.columns([1, 3])
 
         with col_btn:
-            follow_run_clicked = st.button("▶ RUN FOLLOW", key="run_follow", use_container_width=True)
+            if runner.running:
+                # Bot is running - show STOP button
+                if st.button("⏹ STOP", key="stop_follow", use_container_width=True, type="primary"):
+                    runner.stop()
+                    st.rerun()
+            else:
+                # Bot is stopped - show RUN button
+                follow_run_clicked = st.button("▶ RUN FOLLOW", key="run_follow", use_container_width=True)
 
         with col_info:
-            target_set = "✓" if st.session_state.target.strip() else "✗"
+            status_text = "RUNNING — click STOP to halt" if runner.running else f"target {'✓' if st.session_state.target.strip() else '✗'} · pull={pull_limit} · cap={daily_cap} · delay={follow_delay_min}-{follow_delay_max}s"
             st.markdown(f"""
             <div style="padding:10px 0;font-size:12px;color:#888">
-                target {target_set} ·
-                pull={pull_limit} · cap={daily_cap} · delay={follow_delay_min}-{follow_delay_max}s
+                <strong style="color:#c8c8c8">{status_text}</strong>
             </div>
             """, unsafe_allow_html=True)
 
@@ -1064,10 +1077,14 @@ if page == "FOLLOW":
 
         follow_log_placeholder = st.empty()
 
-        # Run the bot
-        if follow_run_clicked:
+        # Run the bot (when RUN button clicked)
+        if not runner.running and follow_run_clicked:
+            # Check if another bot is running
+            if any_bot_running():
+                running_bot = get_running_bot_name()
+                st.error(f"Cannot start Follow Bot — {running_bot} Bot is already running. Stop it first or wait for it to finish.")
             # Validate delays
-            if follow_delay_min > follow_delay_max:
+            elif follow_delay_min > follow_delay_max:
                 st.error("Min delay must be <= max delay")
             else:
                 # Validate target
@@ -1077,55 +1094,69 @@ if page == "FOLLOW":
                 elif "." not in target:
                     st.error(f"Invalid target @{target}. Must be a full handle like 'karpathy.bsky.social'")
                 else:
-                    # Create single account list for the bot
+                    # Start bot in background thread
                     valid_accounts = [{
                         "handle": st.session_state.handle,
                         "password": st.session_state.password,
                         "target": target,
                         "enabled": True
                     }]
-                    st.session_state.follow_bot_running = True
-                    st.session_state.follow_log_lines = []
+                    runner.start(
+                        follow_bot_run,
+                        valid_accounts,
+                        pull_limit,
+                        daily_cap,
+                        follow_delay_min,
+                        follow_delay_max,
+                        auto_like,
+                    )
+                    st.rerun()
 
-                    # Callback to update log display
-                    def follow_log_callback(line):
-                        st.session_state.follow_log_lines.append(line)
-                        log_text = "\n".join(st.session_state.follow_log_lines[-50:])
-                        follow_log_placeholder.code(log_text, language="bash")
+        # Bot is running - show logs and auto-refresh
+        if runner.running:
+            # Display current logs
+            logs = runner.get_logs()
+            if logs:
+                log_text = "\n".join(logs[-50:])
+                follow_log_placeholder.code(log_text, language="bash")
+            else:
+                follow_log_placeholder.code("Starting bot...", language="bash")
 
-                    # Run the bot with spinner
-                    with st.spinner("Running Follow Bot..."):
-                        try:
-                            results = follow_bot_run(
-                                valid_accounts,
-                                pull_limit,
-                                daily_cap,
-                                follow_delay_min,
-                                follow_delay_max,
-                                auto_like,
-                                log_callback=follow_log_callback,
-                            )
-                            # Show summary
-                            total_followed = sum(r["followed"] for r in results)
-                            total_liked = sum(r["liked"] for r in results)
-                            total_errors = sum(r["errors"] for r in results)
-                            st.success(f"Follow bot complete: {total_followed} followed, {total_liked} liked, {total_errors} errors")
-                        except Exception as e:
-                            error_msg = str(e).lower()
-                            if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
-                                st.error(f"Authentication failed: {e}. Check your credentials in SETTINGS.")
-                            elif "rate" in error_msg or "429" in error_msg:
-                                st.error(f"Rate limited: {e}. Wait a few minutes and try again.")
-                            elif "timeout" in error_msg or "connection" in error_msg:
-                                st.error(f"Network error: {e}. Check your connection and try again.")
-                            else:
-                                st.error(f"Bot error: {e}")
+            # Auto-refresh every 2 seconds to show new logs
+            time.sleep(2)
+            st.rerun()
 
-                    st.session_state.follow_bot_running = False
-        else:
-            # Show existing log or placeholder
-            if st.session_state.follow_log_lines:
-                log_text = "\n".join(st.session_state.follow_log_lines[-50:])
+        # Bot finished - show results
+        if not runner.running:
+            # Check for results
+            results = runner.get_results()
+            error = runner.get_error()
+
+            if error:
+                error_msg = error.lower()
+                if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
+                    st.error(f"Authentication failed: {error}. Check your credentials in SETTINGS.")
+                elif "rate" in error_msg or "429" in error_msg:
+                    st.error(f"Rate limited: {error}. Wait a few minutes and try again.")
+                elif "timeout" in error_msg or "connection" in error_msg:
+                    st.error(f"Network error: {error}. Check your connection and try again.")
+                else:
+                    st.error(f"Bot error: {error}")
+                runner.clear()
+            elif results:
+                total_followed = sum(r["followed"] for r in results)
+                total_liked = sum(r["liked"] for r in results)
+                total_errors = sum(r["errors"] for r in results)
+                if runner.stop_requested:
+                    st.warning(f"Follow bot stopped: {total_followed} followed, {total_liked} liked, {total_errors} errors")
+                else:
+                    st.success(f"Follow bot complete: {total_followed} followed, {total_liked} liked, {total_errors} errors")
+                runner.clear()
+
+            # Show existing log
+            logs = runner.get_logs()
+            if logs:
+                log_text = "\n".join(logs[-50:])
                 follow_log_placeholder.code(log_text, language="bash")
             else:
                 follow_log_placeholder.code("Waiting to start...", language="bash")
@@ -1195,19 +1226,30 @@ if page == "UNFOLLOW":
         )
         exemptions = [e.strip() for e in exemptions_text.split("\n") if e.strip()]
 
-        # Preview button
+        # Get runner reference
+        runner = st.session_state.unfollow_runner
+
+        # Preview button (always available)
         col_preview, col_run, col_info = st.columns([1, 1, 2])
 
         with col_preview:
             preview_clicked = st.button("👁 PREVIEW", key="preview_unfollow", use_container_width=True)
 
         with col_run:
-            unfollow_clicked = st.button("🚪 RUN UNFOLLOW", key="run_unfollow", use_container_width=True)
+            if runner.running:
+                # Bot is running - show STOP button
+                if st.button("⏹ STOP", key="stop_unfollow", use_container_width=True, type="primary"):
+                    runner.stop()
+                    st.rerun()
+            else:
+                # Bot is stopped - show RUN button
+                unfollow_clicked = st.button("🚪 RUN UNFOLLOW", key="run_unfollow", use_container_width=True)
 
         with col_info:
+            status_text = "RUNNING — click STOP to halt" if runner.running else f"threshold={days_threshold}d · cap={daily_cap} · delay={unfollow_delay_min}-{unfollow_delay_max}s · {len(exemptions)} exemptions"
             st.markdown(f"""
             <div style="padding:10px 0;font-size:12px;color:#888">
-                threshold={days_threshold}d · cap={daily_cap} · delay={unfollow_delay_min}-{unfollow_delay_max}s · {len(exemptions)} exemptions
+                <strong style="color:#c8c8c8">{status_text}</strong>
             </div>
             """, unsafe_allow_html=True)
 
@@ -1251,54 +1293,74 @@ if page == "UNFOLLOW":
 
         unfollow_log_placeholder = st.empty()
 
-        # Run the bot
-        if unfollow_clicked:
+        # Run the bot (when RUN button clicked)
+        if not runner.running and unfollow_clicked:
+            # Check if another bot is running
+            if any_bot_running():
+                running_bot = get_running_bot_name()
+                st.error(f"Cannot start Unfollow Bot — {running_bot} Bot is already running. Stop it first or wait for it to finish.")
             # Validate delays
-            if unfollow_delay_min > unfollow_delay_max:
+            elif unfollow_delay_min > unfollow_delay_max:
                 st.error("Min delay must be <= max delay")
             else:
-                st.session_state.unfollow_bot_running = True
-                st.session_state.unfollow_log_lines = []
+                # Start bot in background thread
+                account = [{"handle": st.session_state.handle, "password": st.session_state.password, "enabled": True}]
+                runner.start(
+                    unfollow_bot_run,
+                    account,
+                    days_threshold,
+                    daily_cap,
+                    unfollow_delay_min,
+                    unfollow_delay_max,
+                    exemptions,
+                )
+                st.rerun()
 
-                # Callback to update log display
-                def unfollow_log_callback(line):
-                    st.session_state.unfollow_log_lines.append(line)
-                    log_text = "\n".join(st.session_state.unfollow_log_lines[-50:])
-                    unfollow_log_placeholder.code(log_text, language="bash")
+        # Bot is running - show logs and auto-refresh
+        if runner.running:
+            # Display current logs
+            logs = runner.get_logs()
+            if logs:
+                log_text = "\n".join(logs[-50:])
+                unfollow_log_placeholder.code(log_text, language="bash")
+            else:
+                unfollow_log_placeholder.code("Starting bot...", language="bash")
 
-                # Run the bot with spinner
-                with st.spinner("Running Unfollow Bot..."):
-                    try:
-                        results = unfollow_bot_run(
-                            account,
-                            days_threshold,
-                            daily_cap,
-                            unfollow_delay_min,
-                            unfollow_delay_max,
-                            exemptions,
-                            log_callback=unfollow_log_callback,
-                        )
-                        # Show summary
-                        total_unfollowed = sum(r["unfollowed"] for r in results)
-                        total_skipped = sum(r["skipped"] for r in results)
-                        total_errors = sum(r["errors"] for r in results)
-                        st.success(f"Unfollow bot complete: {total_unfollowed} unfollowed, {total_skipped} skipped, {total_errors} errors")
-                    except Exception as e:
-                        error_msg = str(e).lower()
-                        if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
-                            st.error(f"Authentication failed: {e}. Check your credentials in SETTINGS.")
-                        elif "rate" in error_msg or "429" in error_msg:
-                            st.error(f"Rate limited: {e}. Wait a few minutes and try again.")
-                        elif "timeout" in error_msg or "connection" in error_msg:
-                            st.error(f"Network error: {e}. Check your connection and try again.")
-                        else:
-                            st.error(f"Bot error: {e}")
+            # Auto-refresh every 2 seconds to show new logs
+            time.sleep(2)
+            st.rerun()
 
-                st.session_state.unfollow_bot_running = False
-        else:
-            # Show existing log or placeholder
-            if st.session_state.unfollow_log_lines:
-                log_text = "\n".join(st.session_state.unfollow_log_lines[-50:])
+        # Bot finished - show results
+        if not runner.running:
+            # Check for results
+            results = runner.get_results()
+            error = runner.get_error()
+
+            if error:
+                error_msg = error.lower()
+                if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
+                    st.error(f"Authentication failed: {error}. Check your credentials in SETTINGS.")
+                elif "rate" in error_msg or "429" in error_msg:
+                    st.error(f"Rate limited: {error}. Wait a few minutes and try again.")
+                elif "timeout" in error_msg or "connection" in error_msg:
+                    st.error(f"Network error: {error}. Check your connection and try again.")
+                else:
+                    st.error(f"Bot error: {error}")
+                runner.clear()
+            elif results:
+                total_unfollowed = sum(r["unfollowed"] for r in results)
+                total_skipped = sum(r["skipped"] for r in results)
+                total_errors = sum(r["errors"] for r in results)
+                if runner.stop_requested:
+                    st.warning(f"Unfollow bot stopped: {total_unfollowed} unfollowed, {total_skipped} skipped, {total_errors} errors")
+                else:
+                    st.success(f"Unfollow bot complete: {total_unfollowed} unfollowed, {total_skipped} skipped, {total_errors} errors")
+                runner.clear()
+
+            # Show existing log
+            logs = runner.get_logs()
+            if logs:
+                log_text = "\n".join(logs[-50:])
                 unfollow_log_placeholder.code(log_text, language="bash")
             else:
                 unfollow_log_placeholder.code("Waiting to start...", language="bash")
