@@ -59,6 +59,15 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     border-right: 1px solid #222;
     padding: 20px 16px;
 }
+/* Hide collapse button - sidebar always visible */
+[data-testid="stSidebarCollapseButton"] {
+    display: none;
+}
+[data-testid="stSidebar"][aria-expanded="false"] {
+    display: block !important;
+    min-width: 244px !important;
+    width: 244px !important;
+}
 /* Sidebar nav buttons */
 [data-testid="stSidebar"] [data-testid="stButton"] button {
     background: transparent;
