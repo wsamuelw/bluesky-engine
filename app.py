@@ -815,7 +815,7 @@ if page == "DASHBOARD":
                 df["date"] = pd.to_datetime(df["date"])
                 df = df.set_index("date")
 
-                st.line_chart(df[["followers"]], use_container_width=True)
+                st.bar_chart(df[["followers"]], use_container_width=True)
 
                 # Show summary
                 first = chart_data[0]
