@@ -113,8 +113,8 @@ def _run_single_account(account, days_threshold, daily_cap, delay_min, delay_max
         result = client.com.atproto.repo.list_records(params)
 
         for record in result.records:
-            subject = record.value.get("subject", "")
-            created_at = record.value.get("createdAt", "")
+            subject = record.value.subject if hasattr(record.value, 'subject') else ""
+            created_at = record.value.created_at if hasattr(record.value, 'created_at') else ""
             following_records.append({
                 "did": subject,
                 "uri": record.uri,
@@ -254,9 +254,11 @@ def get_unfollow_preview(accounts, days_threshold, exemptions, log_callback=None
                     params["cursor"] = cursor
                 result = client.com.atproto.repo.list_records(params)
                 for record in result.records:
+                    subject = record.value.subject if hasattr(record.value, 'subject') else ""
+                    created_at = record.value.created_at if hasattr(record.value, 'created_at') else ""
                     following_records.append({
-                        "did": record.value.get("subject", ""),
-                        "created_at": record.value.get("createdAt", ""),
+                        "did": subject,
+                        "created_at": created_at,
                     })
                 cursor = result.cursor
                 if not cursor:
