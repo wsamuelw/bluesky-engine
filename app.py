@@ -57,9 +57,11 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 [data-testid="stSidebar"] {
     background: #111;
     border-right: 1px solid #222;
+    padding: 20px 16px;
 }
 [data-testid="stSidebar"] [data-testid="stRadio"] > div {
     gap: 4px;
+    margin-top: 32px;
 }
 [data-testid="stSidebar"] [data-testid="stRadio"] > div > label {
     color: #555;
@@ -70,6 +72,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     padding: 10px 12px;
     border-radius: 2px;
     cursor: pointer;
+    margin-bottom: 4px;
 }
 [data-testid="stSidebar"] [data-testid="stRadio"] > div > label:hover {
     color: #c8c8c8;
@@ -78,6 +81,14 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 [data-testid="stSidebar"] [data-testid="stRadio"] > div > label[data-checked="true"] {
     color: #00d4ff;
     background: #1a1a1a;
+}
+/* Hide radio button circles */
+[data-testid="stSidebar"] [data-testid="stRadio"] > div > label > div:first-child {
+    display: none;
+}
+/* Hide radio button text wrapper */
+[data-testid="stSidebar"] [data-testid="stRadio"] > div > label > div:last-child {
+    margin-left: 0;
 }
 .stTabs [data-baseweb="tab-border"] {
     display: none !important;
