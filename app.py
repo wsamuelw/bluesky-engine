@@ -81,12 +81,15 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 [data-testid="stSidebarCollapseButton"] {
     display: none !important;
 }
-/* Sidebar nav buttons */
-section[data-testid="stSidebar"] button {
+/* Sidebar nav buttons — base reset for all button types */
+section[data-testid="stSidebar"] button[kind="secondary"],
+section[data-testid="stSidebar"] button[kind="primary"],
+section[data-testid="stSidebar"] button[kind="tertiary"] {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
     color: #999 !important;
+    -webkit-text-fill-color: #999 !important;
     font-family: 'JetBrains Mono', monospace !important;
     font-size: 12px !important;
     text-transform: uppercase !important;
@@ -98,13 +101,23 @@ section[data-testid="stSidebar"] button {
     width: 100% !important;
     margin-bottom: 4px !important;
 }
-section[data-testid="stSidebar"] button:hover {
+section[data-testid="stSidebar"] button[kind="secondary"]:hover,
+section[data-testid="stSidebar"] button[kind="primary"]:hover,
+section[data-testid="stSidebar"] button[kind="tertiary"]:hover {
     color: #c8c8c8 !important;
+    -webkit-text-fill-color: #c8c8c8 !important;
     background: #1a1a1a !important;
 }
-/* Active button - same blue as brand */
+/* Inactive nav button — explicit secondary override */
+section[data-testid="stSidebar"] button[kind="secondary"] {
+    color: #999 !important;
+    -webkit-text-fill-color: #999 !important;
+    background: transparent !important;
+}
+/* Active nav button — same blue as brand */
 section[data-testid="stSidebar"] button[kind="primary"] {
     color: #00d4ff !important;
+    -webkit-text-fill-color: #00d4ff !important;
     background: #1a1a1a !important;
 }
 .stTabs [data-baseweb="tab-border"] {
@@ -498,7 +511,7 @@ with st.sidebar:
             nav_item,
             key=f"nav_{nav_item}",
             use_container_width=True,
-            type="primary"
+            type="primary" if is_active else "secondary"
         ):
             st.session_state.active_page = nav_item
             st.rerun()
