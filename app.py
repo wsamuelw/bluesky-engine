@@ -81,11 +81,8 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 [data-testid="stSidebarCollapseButton"] {
     display: none !important;
 }
-/* Sidebar nav buttons - exact mockup match */
-[data-testid="stSidebar"] [data-testid="stButton"] {
-    margin-bottom: 4px;
-}
-[data-testid="stSidebar"] [data-testid="stButton"] button {
+/* Sidebar nav buttons */
+[data-testid="stSidebar"] button {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
@@ -99,14 +96,14 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     border-radius: 2px !important;
     transition: all 0.15s ease !important;
     width: 100% !important;
+    margin-bottom: 4px !important;
 }
-[data-testid="stSidebar"] [data-testid="stButton"] button:hover {
+[data-testid="stSidebar"] button:hover {
     color: #c8c8c8 !important;
     background: #1a1a1a !important;
 }
-/* Primary button = active state */
-[data-testid="stSidebar"] [data-testid="stButton"] button[data-testid="stBaseButton-primary"],
-[data-testid="stSidebar"] [data-testid="stButton"] button[kind="primary"] {
+/* Active button */
+[data-testid="stSidebar"] button[kind="primary"] {
     color: #00d4ff !important;
     background: #1a1a1a !important;
 }
