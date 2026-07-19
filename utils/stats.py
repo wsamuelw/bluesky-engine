@@ -3,26 +3,27 @@ Follower/following stats helpers.
 """
 
 from atproto import Client
+from datetime import datetime, timezone
 
 
 def get_stats(handle: str, client: Client) -> dict:
     """
-    Get follower and following counts for an account.
+    Get follower, following, posts, and engagement stats for an account.
 
     Args:
         handle: e.g. "alice.bsky.social"
         client: authenticated Client
 
     Returns:
-        dict with followers, following, ratio
+        dict with followers, following, ratio, posts_count, account_age_days, posts_per_day, engagement_rate
     """
     profile = client.app.bsky.actor.get_profile({"actor": handle})
 
     followers = profile.followers_count or 0
     following = profile.follows_count or 0
+    posts_count = profile.posts_count or 0
 
     # Calculate ratio (followers:following)
-    # Higher is better (more followers per following)
     if followers > 0 and following > 0:
         ratio = round(followers / following, 2)
         ratio_str = f"{ratio}:1"
@@ -31,9 +32,42 @@ def get_stats(handle: str, client: Client) -> dict:
     else:
         ratio_str = "N/A"
 
+    # Calculate account age
+    account_age_days = 0
+    posts_per_day = 0
+    if profile.created_at:
+        try:
+            created = datetime.fromisoformat(profile.created_at.replace("Z", "+00:00"))
+            now = datetime.now(timezone.utc)
+            account_age_days = (now - created).days
+            if account_age_days > 0:
+                posts_per_day = round(posts_count / account_age_days, 1)
+        except:
+            pass
+
+    # Calculate engagement rate from recent posts
+    engagement_rate = 0
+    try:
+        feed = client.app.bsky.feed.get_author_feed({"actor": handle, "limit": 20})
+        if feed.feed and followers > 0:
+            total_engagement = 0
+            for item in feed.feed:
+                likes = item.post.like_count or 0
+                replies = item.post.reply_count or 0
+                reposts = item.post.repost_count or 0
+                total_engagement += likes + replies + reposts
+            avg_engagement = total_engagement / len(feed.feed)
+            engagement_rate = round((avg_engagement / followers) * 100, 2)
+    except:
+        pass
+
     return {
         "followers": followers,
         "following": following,
         "ratio": ratio_str,
         "handle": handle,
+        "posts_count": posts_count,
+        "account_age_days": account_age_days,
+        "posts_per_day": posts_per_day,
+        "engagement_rate": engagement_rate,
     }

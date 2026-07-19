@@ -662,6 +662,10 @@ if page == "DASHBOARD":
             followers = stats["followers"]
             following = stats["following"]
             ratio = stats["ratio"]
+            posts_count = stats["posts_count"]
+            account_age_days = stats["account_age_days"]
+            posts_per_day = stats["posts_per_day"]
+            engagement_rate = stats["engagement_rate"]
             non_followers = following - followers
 
             # Calculate follow-back rate
@@ -675,21 +679,20 @@ if page == "DASHBOARD":
             else:
                 fbr_color = "#f87171"  # red
 
-            # Calculate growth rate from history
-            history = load_history()
-            chart_data = get_chart_data(history)
-            growth_rate = 0
-            if len(chart_data) >= 2:
-                days_tracked = len(chart_data)
-                total_growth = chart_data[-1]["followers"] - chart_data[0]["followers"]
-                growth_rate = total_growth / days_tracked if days_tracked > 0 else 0
+            # Determine engagement rate color
+            if engagement_rate >= 5:
+                er_color = "#4ade80"  # green
+            elif engagement_rate >= 2:
+                er_color = "#fbbf24"  # yellow
+            else:
+                er_color = "#f87171"  # red
 
             # Save snapshot
             save_snapshot(followers, following)
 
-            # Dashboard cards - one metric per card (6 cards in 2 rows)
+            # Dashboard cards - one metric per card (8 cards in 2 rows)
             # Row 1
-            col1, col2, col3 = st.columns(3)
+            col1, col2, col3, col4 = st.columns(4)
 
             with col1:
                 st.markdown(f"""
@@ -715,30 +718,46 @@ if page == "DASHBOARD":
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Row 2
-            col4, col5, col6 = st.columns(3)
-
             with col4:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Follow-back Rate</div>
-                    <div style="font-size:24px;font-weight:700;color:{fbr_color}">{follow_back_rate:.1f}%</div>
+                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Non-Followers</div>
+                    <div style="font-size:24px;font-weight:700;color:#c8c8c8">{non_followers:,}</div>
                 </div>
                 """, unsafe_allow_html=True)
+
+            # Row 2
+            col5, col6, col7, col8 = st.columns(4)
 
             with col5:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Growth Rate</div>
-                    <div style="font-size:24px;font-weight:700;color:#4ade80">{growth_rate:+.1f}/day</div>
+                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Posts Count</div>
+                    <div style="font-size:24px;font-weight:700;color:#c8c8c8">{posts_count:,}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col6:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Non-Followers</div>
-                    <div style="font-size:24px;font-weight:700;color:#c8c8c8">{non_followers:,}</div>
+                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Account Age</div>
+                    <div style="font-size:24px;font-weight:700;color:#c8c8c8">{account_age_days} days</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col7:
+                st.markdown(f"""
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
+                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Posts/Day</div>
+                    <div style="font-size:24px;font-weight:700;color:#00d4ff">{posts_per_day}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col8:
+                st.markdown(f"""
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
+                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Engagement Rate</div>
+                    <div style="font-size:24px;font-weight:700;color:{er_color}">{engagement_rate}%</div>
                 </div>
                 """, unsafe_allow_html=True)
 
