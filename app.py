@@ -472,6 +472,16 @@ if "follow_bot_running" not in st.session_state:
 if "unfollow_bot_running" not in st.session_state:
     st.session_state.unfollow_bot_running = False
 
+# Per-bot stop flags
+if "like_bot_stop" not in st.session_state:
+    st.session_state.like_bot_stop = False
+
+if "follow_bot_stop" not in st.session_state:
+    st.session_state.follow_bot_stop = False
+
+if "unfollow_bot_stop" not in st.session_state:
+    st.session_state.unfollow_bot_stop = False
+
 # Separate log lines for each bot
 if "like_log_lines" not in st.session_state:
     st.session_state.like_log_lines = []
@@ -752,18 +762,24 @@ if page == "LIKE":
             delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=10, step=1,
                 help="Maximum seconds between likes. Random delay between min and max.")
 
-        # Run button
+        # Toggle button - changes between RUN and STOP
         col_btn, col_info = st.columns([1, 3])
 
         with col_btn:
-            run_clicked = st.button("▶ RUN LIKE", key="run_like", use_container_width=True)
+            if st.session_state.like_bot_running:
+                # Bot is running - show STOP button
+                if st.button("⏹ STOP", key="stop_like", use_container_width=True, type="primary"):
+                    st.session_state.like_bot_stop = True
+                    st.rerun()
+            else:
+                # Bot is stopped - show RUN button
+                run_clicked = st.button("▶ RUN LIKE", key="run_like", use_container_width=True)
 
         with col_info:
+            status_text = "RUNNING — click STOP to halt" if st.session_state.like_bot_running else f"@{st.session_state.handle} · batch={batch_size} · delay={delay_min}-{delay_max}s"
             st.markdown(f"""
             <div style="padding:10px 0;font-size:12px;color:#888">
-                <strong style="color:#c8c8c8">@{st.session_state.handle}</strong> ·
-                batch={batch_size} · daily cap={daily_cap} · delay={delay_min}-{delay_max}s ·
-                est. {int(batch_size * (delay_min + delay_max) / 2 / 60)} min
+                <strong style="color:#c8c8c8">{status_text}</strong>
             </div>
             """, unsafe_allow_html=True)
 
@@ -779,54 +795,68 @@ if page == "LIKE":
 
         log_placeholder = st.empty()
 
-        # Run the bot
-        if run_clicked:
+        # Run the bot (when RUN button clicked)
+        if not st.session_state.like_bot_running and run_clicked:
             # Validate delays
             if delay_min > delay_max:
                 st.error("Min delay must be <= max delay")
             else:
                 st.session_state.like_bot_running = True
+                st.session_state.like_bot_stop = False
                 st.session_state.like_log_lines = []
+                st.rerun()
 
-                # Create single account list for the bot
-                account = [{"handle": st.session_state.handle, "password": st.session_state.password, "enabled": True}]
+        # Bot execution (when running)
+        if st.session_state.like_bot_running and not st.session_state.like_bot_stop:
+            # Create single account list for the bot
+            account = [{"handle": st.session_state.handle, "password": st.session_state.password, "enabled": True}]
 
-                # Callback to update log display in real-time
-                def log_callback(line):
-                    st.session_state.like_log_lines.append(line)
-                    log_text = "\n".join(st.session_state.like_log_lines[-50:])
-                    log_placeholder.code(log_text, language="bash")
+            # Callback to update log display in real-time
+            def log_callback(line):
+                st.session_state.like_log_lines.append(line)
+                log_text = "\n".join(st.session_state.like_log_lines[-50:])
+                log_placeholder.code(log_text, language="bash")
 
-                # Run the bot with spinner
-                with st.spinner("Running Like Bot..."):
-                    try:
-                        results = like_bot_run(
-                            account,
-                            batch_size,
-                            likes_per_user,
-                            delay_min,
-                            delay_max,
-                            log_callback=log_callback,
-                        )
-                        # Show summary
-                        total_liked = sum(r["liked"] for r in results)
-                        total_skipped = sum(r["skipped"] for r in results)
-                        total_errors = sum(r["errors"] for r in results)
-                        st.success(f"Like bot complete: {total_liked} liked, {total_skipped} skipped, {total_errors} errors")
-                    except Exception as e:
-                        error_msg = str(e).lower()
-                        if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
-                            st.error(f"Authentication failed: {e}. Check your credentials in SETTINGS.")
-                        elif "rate" in error_msg or "429" in error_msg:
-                            st.error(f"Rate limited: {e}. Wait a few minutes and try again.")
-                        elif "timeout" in error_msg or "connection" in error_msg:
-                            st.error(f"Network error: {e}. Check your connection and try again.")
-                        else:
-                            st.error(f"Bot error: {e}")
+            # Stop check function
+            def check_stop():
+                return st.session_state.like_bot_stop
 
-                st.session_state.like_bot_running = False
-        else:
-            # Show existing log or placeholder
+            # Run the bot
+            try:
+                results = like_bot_run(
+                    account,
+                    batch_size,
+                    likes_per_user,
+                    delay_min,
+                    delay_max,
+                    log_callback=log_callback,
+                    stop_check=check_stop,
+                )
+                # Show summary
+                total_liked = sum(r["liked"] for r in results)
+                total_skipped = sum(r["skipped"] for r in results)
+                total_errors = sum(r["errors"] for r in results)
+                if st.session_state.like_bot_stop:
+                    st.warning(f"Like bot stopped: {total_liked} liked, {total_skipped} skipped, {total_errors} errors")
+                else:
+                    st.success(f"Like bot complete: {total_liked} liked, {total_skipped} skipped, {total_errors} errors")
+            except Exception as e:
+                error_msg = str(e).lower()
+                if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
+                    st.error(f"Authentication failed: {e}. Check your credentials in SETTINGS.")
+                elif "rate" in error_msg or "429" in error_msg:
+                    st.error(f"Rate limited: {e}. Wait a few minutes and try again.")
+                elif "timeout" in error_msg or "connection" in error_msg:
+                    st.error(f"Network error: {e}. Check your connection and try again.")
+                else:
+                    st.error(f"Bot error: {e}")
+
+            st.session_state.like_bot_running = False
+            st.session_state.like_bot_stop = False
+            st.rerun()
+
+        # Show existing log when not running
+        if not st.session_state.like_bot_running:
             if st.session_state.like_log_lines:
                 log_text = "\n".join(st.session_state.like_log_lines[-50:])
                 log_placeholder.code(log_text, language="bash")

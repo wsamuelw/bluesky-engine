@@ -17,7 +17,7 @@ def ts() -> str:
     return datetime.now().strftime("%H:%M:%S")
 
 
-def like_bot_run(accounts, batch_size, likes_per_user, delay_min, delay_max, log_callback=None):
+def like_bot_run(accounts, batch_size, likes_per_user, delay_min, delay_max, log_callback=None, stop_check=None):
     """
     Run like bot on all enabled accounts.
 
@@ -28,6 +28,7 @@ def like_bot_run(accounts, batch_size, likes_per_user, delay_min, delay_max, log
         delay_min: min seconds between likes
         delay_max: max seconds between likes
         log_callback: function to call with each log line (for live display)
+        stop_check: function that returns True if bot should stop
 
     Returns:
         list of result dicts
@@ -35,6 +36,11 @@ def like_bot_run(accounts, batch_size, likes_per_user, delay_min, delay_max, log
     def log(line):
         if log_callback:
             log_callback(line)
+
+    def should_stop():
+        if stop_check:
+            return stop_check()
+        return False
 
     enabled = [a for a in accounts if a.get("enabled", True)]
 
@@ -45,7 +51,10 @@ def like_bot_run(accounts, batch_size, likes_per_user, delay_min, delay_max, log
     results = []
 
     for acc in enabled:
-        result = _run_single_account(acc, batch_size, likes_per_user, delay_min, delay_max, log_callback)
+        if should_stop():
+            log("Stop requested. Halting...")
+            break
+        result = _run_single_account(acc, batch_size, likes_per_user, delay_min, delay_max, log_callback, stop_check)
         results.append(result)
 
     # Summary
@@ -71,7 +80,7 @@ def like_bot_run(accounts, batch_size, likes_per_user, delay_min, delay_max, log
     return results
 
 
-def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_max, log_callback=None):
+def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_max, log_callback=None, stop_check=None):
     """
     Run like bot for a single account.
 
@@ -81,6 +90,11 @@ def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_ma
     def log(line):
         if log_callback:
             log_callback(line)
+
+    def should_stop():
+        if stop_check:
+            return stop_check()
+        return False
 
     handle = account["handle"]
     password = account["password"]
@@ -146,6 +160,11 @@ def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_ma
     errors = 0
 
     for i, user_did in enumerate(sample):
+        # Check for stop request
+        if should_stop():
+            log(f"[{ts()}] INFO [{handle}] Stop requested. Halting after {liked} likes...")
+            break
+
         # Fetch handle for logging
         try:
             profile_info = client.app.bsky.actor.get_profile({"actor": user_did})
@@ -154,7 +173,7 @@ def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_ma
             user_handle = user_did[:20] + "..."
 
         try:
-            l = _like_user_posts(client, user_did, user_handle, likes_per_user, delay_min, delay_max, log_callback)
+            l = _like_user_posts(client, user_did, user_handle, likes_per_user, delay_min, delay_max, log_callback, stop_check)
             if l > 0:
                 liked += l
                 log(f"[{ts()}] OK   [{handle}] [{i+1}/{len(sample)}] Liked {l} posts from @{user_handle}")
@@ -164,15 +183,20 @@ def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_ma
             errors += 1
             log(f"[{ts()}] ERR  [{handle}] @{user_handle}: {str(e)[:200]}")
 
-        # Delay between users
+        # Delay between users - interruptible
         if i < len(sample) - 1:
             delay = random.uniform(delay_min, delay_max)
-            time.sleep(delay)
+            elapsed = 0
+            while elapsed < delay:
+                if should_stop():
+                    break
+                time.sleep(0.5)
+                elapsed += 0.5
 
     return {"handle": handle, "liked": liked, "skipped": skipped, "errors": errors}
 
 
-def _like_user_posts(client, user_did, user_handle, max_likes, delay_min, delay_max, log_callback=None):
+def _like_user_posts(client, user_did, user_handle, max_likes, delay_min, delay_max, log_callback=None, stop_check=None):
     """
     Like 1-2 recent posts from a single user.
 
@@ -182,6 +206,11 @@ def _like_user_posts(client, user_did, user_handle, max_likes, delay_min, delay_
     def log(line):
         if log_callback:
             log_callback(line)
+
+    def should_stop():
+        if stop_check:
+            return stop_check()
+        return False
 
     liked = 0
 
@@ -201,11 +230,21 @@ def _like_user_posts(client, user_did, user_handle, max_likes, delay_min, delay_
         posts = posts[:max_likes]
 
         for item in posts:
+            # Check for stop request
+            if should_stop():
+                break
+
             try:
                 client.like(item.post.uri, item.post.cid)
                 liked += 1
+                # Interruptible delay - check for stop every 0.5s
                 delay = random.uniform(delay_min, delay_max)
-                time.sleep(delay)
+                elapsed = 0
+                while elapsed < delay:
+                    if should_stop():
+                        break
+                    time.sleep(0.5)
+                    elapsed += 0.5
             except Exception as e:
                 err = str(e).lower()
                 if "already" in err:
