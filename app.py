@@ -77,7 +77,10 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     padding: 20px 16px;
 }
 /* Hide collapse button - sidebar always visible */
-button[kind="header"] {
+[data-testid="stSidebar"] button[aria-label="Close sidebar"],
+[data-testid="stSidebar"] button[aria-label="Open sidebar"],
+[data-testid="stSidebarCollapseButton"],
+[data-testid="stSidebar"] button:first-child {
     display: none !important;
 }
 [data-testid="stSidebar"] {
