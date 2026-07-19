@@ -96,6 +96,7 @@ section[data-testid="stSidebar"] button[kind="tertiary"] {
     letter-spacing: 1px !important;
     padding: 10px 12px !important;
     text-align: left !important;
+    justify-content: flex-start !important;
     border-radius: 2px !important;
     transition: all 0.15s ease !important;
     width: 100% !important;
