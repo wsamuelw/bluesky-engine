@@ -213,10 +213,10 @@ section[data-testid="stSidebar"] button[kind="tertiary"] {
     color: #999 !important;
     -webkit-text-fill-color: #999 !important;
     font-family: 'JetBrains Mono', monospace !important;
-    font-size: 11px !important;
+    font-size: 10px !important;
     text-transform: uppercase !important;
     letter-spacing: 1px !important;
-    padding: 8px 10px !important;
+    padding: 6px 8px !important;
     text-align: left !important;
     justify-content: flex-start !important;
     border-radius: 2px !important;
