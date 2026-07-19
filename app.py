@@ -707,53 +707,7 @@ if page == "DASHBOARD":
             history = load_history()
             chart_data = get_chart_data(history)
 
-    # Load history for chart
-    history = load_history()
-    chart_data = get_chart_data(history)
-
-    # Follower Growth chart (full width)
-    st.markdown("""
-    <div class="panel" style="margin-top:20px">
-        <div class="panel-header">
-            <span class="title">Follower Growth — 30d</span>
-            <span class="status live">LIVE</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    if len(chart_data) >= 2:
-        # Show line chart with Streamlit
-        import pandas as pd
-        df = pd.DataFrame(chart_data)
-        df["date"] = pd.to_datetime(df["date"])
-        df = df.set_index("date")
-
-        st.line_chart(df[["followers"]], use_container_width=True)
-
-        # Show stats
-        first = chart_data[0]
-        last = chart_data[-1]
-        change = last["followers"] - first["followers"]
-        days = len(chart_data)
-
-        st.markdown(f"""
-        <div style="font-size:11px;color:#333;margin-top:8px;font-family:'JetBrains Mono',monospace">
-            {days} days tracked · {change:+,} followers · since {first['date']}
-        </div>
-        """, unsafe_allow_html=True)
-    elif len(chart_data) == 1:
-        st.markdown(f"""
-        <div style="padding:20px;text-align:center;color:#888;font-size:12px;font-family:'JetBrains Mono',monospace">
-            First snapshot saved today ({chart_data[0]['date']}).<br>
-            Come back tomorrow to see the growth chart.
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <div style="padding:20px;text-align:center;color:#666;font-size:12px;font-family:'JetBrains Mono',monospace">
-            No data yet. Configure accounts to start tracking.
-        </div>
-        """, unsafe_allow_html=True)
+    # Dashboard is now just the ticker strip above
 
 
 # =============================================================
