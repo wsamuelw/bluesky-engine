@@ -77,41 +77,37 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     padding: 20px 16px;
 }
 /* Hide collapse button - sidebar always visible */
-[data-testid="stSidebar"] button[aria-label="Close sidebar"],
-[data-testid="stSidebar"] button[aria-label="Open sidebar"],
-[data-testid="stSidebarCollapseButton"],
-[data-testid="stSidebar"] button:first-child {
+[data-testid="stSidebarCollapseButton"] {
     display: none !important;
 }
-[data-testid="stSidebar"] {
-    min-width: 244px !important;
-    width: 244px !important;
-}
-/* Sidebar nav buttons */
-[data-testid="stSidebar"] [data-testid="stButton"] button {
-    background: transparent;
-    border: none;
-    border-left: 3px solid transparent;
-    color: #555;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    padding: 10px 12px;
-    text-align: left;
+/* Sidebar nav buttons - exact mockup match */
+[data-testid="stSidebar"] [data-testid="stButton"] {
     margin-bottom: 4px;
-    border-radius: 0 2px 2px 0;
-    transition: all 0.15s ease;
+}
+[data-testid="stSidebar"] [data-testid="stButton"] button {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #555 !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 12px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    padding: 10px 12px !important;
+    text-align: left !important;
+    border-radius: 2px !important;
+    transition: all 0.15s ease !important;
+    width: 100% !important;
 }
 [data-testid="stSidebar"] [data-testid="stButton"] button:hover {
-    color: #c8c8c8;
-    background: #1a1a1a;
+    color: #c8c8c8 !important;
+    background: #1a1a1a !important;
 }
 /* Primary button = active state */
-[data-testid="stSidebar"] [data-testid="stButton"] button[data-testid="stBaseButton-primary"] {
-    color: #00d4ff;
-    border-left: 3px solid #00d4ff;
-    background: #1a1a1a;
+[data-testid="stSidebar"] [data-testid="stButton"] button[data-testid="stBaseButton-primary"],
+[data-testid="stSidebar"] [data-testid="stButton"] button[kind="primary"] {
+    color: #00d4ff !important;
+    background: #1a1a1a !important;
 }
 .stTabs [data-baseweb="tab-border"] {
     display: none !important;
