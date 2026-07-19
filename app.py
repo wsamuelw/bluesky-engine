@@ -664,12 +664,16 @@ if page == "DASHBOARD":
             ratio = stats["ratio"]
             non_followers = following - followers
 
-            # Calculate net change from history
-            history = load_history()
-            chart_data = get_chart_data(history)
-            net_change = 0
-            if len(chart_data) >= 2:
-                net_change = chart_data[-1]["followers"] - chart_data[-2]["followers"]
+            # Calculate follow-back rate
+            follow_back_rate = (followers / following * 100) if following > 0 else 0
+
+            # Determine follow-back rate color
+            if follow_back_rate >= 20:
+                fbr_color = "#4ade80"  # green
+            elif follow_back_rate >= 10:
+                fbr_color = "#fbbf24"  # yellow
+            else:
+                fbr_color = "#f87171"  # red
 
             # Save snapshot
             save_snapshot(followers, following)
@@ -682,7 +686,6 @@ if page == "DASHBOARD":
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
                     <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Followers</div>
                     <div style="font-size:24px;font-weight:700;color:#c8c8c8">{followers:,}</div>
-                    <div style="font-size:11px;color:#4ade80;margin-top:4px">+{net_change} today</div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -705,8 +708,8 @@ if page == "DASHBOARD":
             with col4:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Net Change</div>
-                    <div style="font-size:24px;font-weight:700;color:#4ade80">+{net_change}</div>
+                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Follow-back Rate</div>
+                    <div style="font-size:24px;font-weight:700;color:{fbr_color}">{follow_back_rate:.1f}%</div>
                 </div>
                 """, unsafe_allow_html=True)
 
