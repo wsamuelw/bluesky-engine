@@ -60,11 +60,10 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     padding: 20px 16px;
 }
 /* Hide collapse button - sidebar always visible */
-[data-testid="stSidebarCollapseButton"] {
-    display: none;
+button[kind="header"] {
+    display: none !important;
 }
-[data-testid="stSidebar"][aria-expanded="false"] {
-    display: block !important;
+[data-testid="stSidebar"] {
     min-width: 244px !important;
     width: 244px !important;
 }
