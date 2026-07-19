@@ -491,14 +491,14 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # Navigation buttons
+    # Navigation buttons - same style as SAVE & VERIFY button
     for nav_item in ["DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "SETTINGS"]:
         is_active = st.session_state.active_page == nav_item
         if st.button(
             nav_item,
             key=f"nav_{nav_item}",
             use_container_width=True,
-            type="primary" if is_active else "secondary"
+            type="primary"
         ):
             st.session_state.active_page = nav_item
             st.rerun()
