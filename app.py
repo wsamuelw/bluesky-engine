@@ -228,21 +228,25 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 }
 
 /* Topbar */
-/* Sidebar - matches mockup 18-nav-sidebar.html */
+/* Sidebar - always visible */
 [data-testid="stSidebar"] {
     background: #111;
     border-right: 1px solid #222;
     padding: 20px 16px;
+    min-width: 200px !important;
+    max-width: 200px !important;
 }
-/* Collapse/expand button styling */
+/* Hide collapse/expand buttons - sidebar always shown */
 [data-testid="stSidebarCollapseButton"],
-[data-testid="stSidebarCollapsedControl"] {
-    color: #00d4ff !important;
+[data-testid="stSidebarCollapsedControl"],
+button[kind="header"] {
+    display: none !important;
 }
-/* Force sidebar visible */
-[data-testid="stSidebar"][aria-expanded="false"] {
+/* Force sidebar always visible */
+section[data-testid="stSidebar"] {
     transform: translateX(0) !important;
     visibility: visible !important;
+    position: relative !important;
 }
 /* Sidebar nav buttons — base reset for all button types */
 section[data-testid="stSidebar"] button[kind="secondary"],
