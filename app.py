@@ -476,8 +476,9 @@ section[data-testid="stSidebar"] button[kind="primary"] {
 .stFormSubmitButton > button p {
     color: #0a0a0a !important;
 }
-/* Hide "press enter to submit" hint */
-div[data-testid="stForm"] small {
+/* Hide form submit hint text */
+div[data-testid="stForm"] small,
+div[data-testid="stCaptionContainer"] {
     display: none !important;
 }
 
