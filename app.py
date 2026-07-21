@@ -451,7 +451,8 @@ section[data-testid="stSidebar"] button[kind="primary"] {
 .action-bar .info strong { color: #c8c8c8; }
 
 /* Buttons */
-.stButton > button {
+.stButton > button,
+.stFormSubmitButton > button {
     background: #00d4ff !important;
     color: #0a0a0a !important;
     border: none !important;
@@ -463,14 +464,21 @@ section[data-testid="stSidebar"] button[kind="primary"] {
     letter-spacing: 1px !important;
     border-radius: 2px !important;
 }
-.stButton > button:hover {
+.stButton > button:hover,
+.stFormSubmitButton > button:hover {
     background: #00b8db !important;
 }
-.stButton > button span {
+.stButton > button span,
+.stFormSubmitButton > button span {
     color: #0a0a0a !important;
 }
-.stButton > button p {
+.stButton > button p,
+.stFormSubmitButton > button p {
     color: #0a0a0a !important;
+}
+/* Hide "press enter to submit" hint */
+div[data-testid="stForm"] small {
+    display: none !important;
 }
 
 /* Input fields */
@@ -751,14 +759,15 @@ if not st.session_state.verified:
         </div>
         """, unsafe_allow_html=True)
 
-        # Instructions (collapsible)
-        with st.expander("How to get an app password"):
-            st.markdown("""
-            1. Go to **Settings > App Passwords** on [bsky.app](https://bsky.app/settings/app-passwords)
-            2. Click **Generate**
-            3. Copy the password (format: `xxxx-xxxx-xxxx-xxxx`)
-            4. Paste it above
-            """)
+        # Instructions
+        st.markdown("""
+        <div style="margin-top:20px;font-size:12px;color:#888;line-height:1.8;font-family:'JetBrains Mono',monospace">
+            <strong style="color:#c8c8c8">How to get an app password:</strong><br>
+            1. Go to <a href="https://bsky.app/settings/app-passwords" target="_blank" style="color:#00d4ff">Settings > App Passwords</a> on bsky.app<br>
+            2. Click "Generate"<br>
+            3. Copy and paste the password above
+        </div>
+        """, unsafe_allow_html=True)
 
     # Stop here - don't show the main app
     st.stop()
@@ -776,17 +785,9 @@ with st.sidebar:
     # Brand name
     version = get_version()
     st.markdown(f"""
-    <div style="margin-bottom:16px">
+    <div style="margin-bottom:32px">
         <span style="color:#00d4ff;font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-0.5px">bsky_growth</span>
         <span style="color:#555;font-size:14px;font-family:'JetBrains Mono',monospace"> {version}</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Account info
-    st.markdown(f"""
-    <div style="margin-bottom:24px;padding:8px 0;border-bottom:1px solid #222">
-        <span style="color:#00d4ff;font-size:12px;font-family:'JetBrains Mono',monospace">@{st.session_state.profile_handle}</span>
-        <span style="color:#888;font-size:11px;font-family:'JetBrains Mono',monospace;margin-left:8px">{st.session_state.profile_followers:,} followers</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -802,8 +803,8 @@ with st.sidebar:
             st.session_state.active_page = nav_item
             st.rerun()
 
-    # Disconnect button at bottom of sidebar
-    st.markdown("<div style='margin-top:40px'></div>", unsafe_allow_html=True)
+    # Disconnect button
+    st.markdown("<div style='margin-top:16px;border-top:1px solid #222;padding-top:16px'></div>", unsafe_allow_html=True)
     if st.button("DISCONNECT", key="sidebar_disconnect", use_container_width=True):
         st.session_state.confirm_disconnect_sidebar = True
 
