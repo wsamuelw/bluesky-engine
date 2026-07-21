@@ -640,9 +640,6 @@ button[key="stop_unfollow"]:hover {
 if "handle" not in st.session_state:
     st.session_state.handle = ""
 
-if "password" not in st.session_state:
-    st.session_state.password = ""
-
 if "target" not in st.session_state:
     st.session_state.target = ""
 
@@ -688,73 +685,80 @@ if not st.session_state.verified:
         </div>
         """, unsafe_allow_html=True)
 
-        # Login panel
-        st.markdown("""
-        <div class="panel">
-            <div class="panel-header">
-                <span class="title">Sign In</span>
+        # Error message (if any)
+        if st.session_state.get("login_error"):
+            st.markdown(f"""
+            <div style="padding:12px 16px;background:rgba(255,60,60,0.1);border:1px solid rgba(255,60,60,0.3);
+                        border-radius:4px;margin-bottom:16px;font-size:13px;color:#ff6b6b;font-family:'JetBrains Mono',monospace">
+                {st.session_state["login_error"]}
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
-        st.markdown('<span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Handle</span>', unsafe_allow_html=True)
-        st.text_input(
-            "HANDLE",
-            value=st.session_state.get("handle", ""),
-            placeholder="alice.bsky.social",
-            key="login_handle",
-            label_visibility="collapsed",
-        )
+        # Login form
+        with st.form("login_form"):
+            st.markdown('<span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Handle</span>', unsafe_allow_html=True)
+            st.text_input(
+                "Handle",
+                placeholder="alice.bsky.social",
+                key="login_handle",
+                label_visibility="collapsed",
+            )
 
-        st.markdown('<span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">App Password</span>', unsafe_allow_html=True)
-        st.text_input(
-            "APP PASSWORD",
-            value=st.session_state.get("password", ""),
-            type="password",
-            placeholder="xxxx-xxxx-xxxx-xxxx",
-            key="login_password",
-            label_visibility="collapsed",
-        )
+            st.markdown('<span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">App Password</span>', unsafe_allow_html=True)
+            st.text_input(
+                "App Password",
+                type="password",
+                placeholder="xxxx-xxxx-xxxx-xxxx",
+                key="login_password",
+                label_visibility="collapsed",
+            )
 
-        submitted = st.button("SIGN IN", key="login_submit", use_container_width=True, type="primary")
+            submitted = st.form_submit_button("SIGN IN", use_container_width=True, type="primary")
 
         if submitted:
             handle = st.session_state.login_handle.strip()
             password = st.session_state.login_password.strip()
 
             if not handle or not password:
-                st.error("Please enter both handle and app password.")
+                st.session_state["login_error"] = "Please enter both handle and app password."
+                st.rerun()
             elif "." not in handle:
-                st.error(f"Invalid handle '{handle}'. Use full format like alice.bsky.social")
+                st.session_state["login_error"] = f"Invalid handle '{handle}'. Use full format like alice.bsky.social"
+                st.rerun()
             else:
+                st.session_state["login_error"] = None
                 try:
-                    with st.spinner("Verifying with Bluesky..."):
+                    with st.spinner("Authenticating with Bluesky..."):
                         client = get_bluesky_client(handle, password)
                         profile = client.app.bsky.actor.get_profile({"actor": handle})
                     st.session_state.handle = handle
-                    st.session_state.password = password
                     st.session_state.verified = True
                     st.session_state.client = client
                     st.session_state.profile_handle = profile.handle
                     st.session_state.profile_followers = profile.followers_count or 0
                     st.rerun()
                 except AtProtocolError:
-                    st.error("Authentication failed. Check your handle and app password.")
+                    st.session_state["login_error"] = "Authentication failed. Check your handle and app password."
+                    st.rerun()
                 except Exception:
-                    st.error("Something went wrong. Please try again.")
+                    st.session_state["login_error"] = "Something went wrong. Please try again."
+                    st.rerun()
 
-        # Instructions
+        # Trust message
         st.markdown("""
-        <div style="margin-top:30px;padding:16px;background:#111;border:1px solid #222;border-radius:4px">
-            <div style="font-size:12px;color:#888;line-height:1.8">
-                <strong style="color:#c8c8c8">How to get app passwords:</strong><br>
-                1. Go to <a href="https://bsky.app/settings/app-passwords" target="_blank" style="color:#00d4ff">bsky.app → Settings → App Passwords</a><br>
-                2. Click "Generate"<br>
-                3. Copy the password (looks like <code style="color:#00d4ff;background:#1a1a1a;padding:2px 4px">abcd-efgh-ijkl-mnop</code>)<br>
-                4. Paste it above
-            </div>
+        <div style="text-align:center;margin-top:16px;font-size:11px;color:#555;font-family:'JetBrains Mono',monospace">
+            Your password is sent directly to Bluesky's servers. We never see or store it.
         </div>
         """, unsafe_allow_html=True)
+
+        # Instructions (collapsible)
+        with st.expander("How to get an app password"):
+            st.markdown("""
+            1. Go to **Settings > App Passwords** on [bsky.app](https://bsky.app/settings/app-passwords)
+            2. Click **Generate**
+            3. Copy the password (format: `xxxx-xxxx-xxxx-xxxx`)
+            4. Paste it above
+            """)
 
     # Stop here - don't show the main app
     st.stop()
@@ -809,7 +813,6 @@ with st.sidebar:
         with col1:
             if st.button("Yes", key="confirm_sidebar_yes", type="primary"):
                 st.session_state.handle = ""
-                st.session_state.password = ""
                 st.session_state.verified = False
                 st.session_state.client = None
                 st.session_state.profile_handle = ""
@@ -830,10 +833,8 @@ page = st.session_state.active_page
 
 if page == "DASHBOARD":
     # Check if account is configured and verified
-    if not st.session_state.handle or not st.session_state.password:
-        st.info("Configure your account in the SETTINGS tab to see live stats here.")
-    elif not st.session_state.verified:
-        st.info("Please verify your account in the SETTINGS tab first.")
+    if not st.session_state.verified:
+        st.info("Please sign in to view dashboard.")
     else:
         # Refresh button with cache age
         import time
@@ -859,7 +860,7 @@ if page == "DASHBOARD":
                 stats = st.session_state.cached_stats
             else:
                 with st.spinner("Fetching stats..."):
-                    client = get_bluesky_client(st.session_state.handle, st.session_state.password)
+                    client = st.session_state.client
                     stats = get_stats(st.session_state.handle, client)
                 st.session_state.cached_stats = stats
                 st.session_state.stats_timestamp = now
@@ -1023,8 +1024,8 @@ if page == "LIKE":
     """, unsafe_allow_html=True)
 
     # Check if account is configured
-    if not st.session_state.handle or not st.session_state.password:
-        st.warning("No account configured. Go to SETTINGS tab to add your account first.")
+    if not st.session_state.verified:
+        st.warning("Please sign in first.")
     else:
         # Config
         col1, col2, col3, col4, col5 = st.columns(5)
@@ -1099,7 +1100,7 @@ if page == "LIKE":
                 st.error("Min delay must be <= max delay")
             else:
                 # Start bot in background thread
-                account = [{"handle": st.session_state.handle, "password": st.session_state.password, "client": st.session_state.get("client"), "enabled": True}]
+                account = [{"handle": st.session_state.handle, "client": st.session_state.get("client"), "enabled": True}]
                 # Store settings for retry
                 st.session_state.like_settings = {
                     "account": account,
@@ -1188,8 +1189,8 @@ if page == "FOLLOW":
     """, unsafe_allow_html=True)
 
     # Check if account is configured
-    if not st.session_state.handle or not st.session_state.password:
-        st.warning("No account configured. Go to SETTINGS tab to add your account first.")
+    if not st.session_state.verified:
+        st.warning("Please sign in first.")
     else:
         # Show account with target input
         st.markdown("""
@@ -1294,7 +1295,6 @@ if page == "FOLLOW":
                     # Start bot in background thread
                     valid_accounts = [{
                         "handle": st.session_state.handle,
-                        "password": st.session_state.password,
                         "client": st.session_state.get("client"),
                         "target": target,
                         "enabled": True
@@ -1390,8 +1390,8 @@ if page == "UNFOLLOW":
     """, unsafe_allow_html=True)
 
     # Check if account is configured
-    if not st.session_state.handle or not st.session_state.password:
-        st.warning("No account configured. Go to SETTINGS tab to add your account first.")
+    if not st.session_state.verified:
+        st.warning("Please sign in first.")
     else:
         # Settings
         st.markdown("""
@@ -1474,7 +1474,7 @@ if page == "UNFOLLOW":
             """, unsafe_allow_html=True)
 
             # Create single account list for preview
-            account = [{"handle": st.session_state.handle, "password": st.session_state.password, "enabled": True}]
+            account = [{"handle": st.session_state.handle, "client": st.session_state.get("client"), "enabled": True}]
 
             with st.spinner("Fetching preview data..."):
                 preview_results = get_unfollow_preview(account, days_threshold, exemptions)
@@ -1527,7 +1527,7 @@ if page == "UNFOLLOW":
                         st.error("Min delay must be <= max delay")
                     else:
                         # Start bot in background thread
-                        account = [{"handle": st.session_state.handle, "password": st.session_state.password, "client": st.session_state.get("client"), "enabled": True}]
+                        account = [{"handle": st.session_state.handle, "client": st.session_state.get("client"), "enabled": True}]
                         # Store settings for retry
                         st.session_state.unfollow_settings = {
                             "account": account,
