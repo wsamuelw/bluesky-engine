@@ -194,7 +194,7 @@ def send_notification(title: str, body: str):
 # =============================================================
 
 st.set_page_config(
-    page_title="BSKY_GROWTH",
+    page_title="bluesky-engine",
     page_icon="🦋",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -689,7 +689,7 @@ if not st.session_state.verified:
         # Brand header
         st.markdown("""
         <div style="text-align:center;margin-bottom:40px;margin-top:60px">
-            <span style="color:#00d4ff;font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-1px">bsky_growth</span>
+            <span style="color:#00d4ff;font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-1px">bluesky-engine</span>
             <div style="color:#888;font-size:13px;margin-top:8px;font-family:'JetBrains Mono',monospace">Bluesky Growth Platform</div>
         </div>
         """, unsafe_allow_html=True)
@@ -787,7 +787,7 @@ with st.sidebar:
     version = get_version()
     st.markdown(f"""
     <div style="margin-bottom:32px">
-        <span style="color:#00d4ff;font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-0.5px">bsky_growth</span>
+        <span style="color:#00d4ff;font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-0.5px">bluesky-engine</span>
         <span style="color:#555;font-size:14px;font-family:'JetBrains Mono',monospace"> {version}</span>
     </div>
     """, unsafe_allow_html=True)
@@ -1162,10 +1162,10 @@ if page == "LIKE":
                 total_errors = sum(r["errors"] for r in results)
                 if runner.stop_requested:
                     st.warning(f"Like bot stopped: {total_liked} liked, {total_skipped} skipped, {total_errors} errors")
-                    send_notification("BSKY_GROWTH", f"Like bot stopped — {total_liked} liked")
+                    send_notification("bluesky-engine", f"Like bot stopped — {total_liked} liked")
                 else:
                     st.success(f"Like bot complete: {total_liked} liked, {total_skipped} skipped, {total_errors} errors")
-                    send_notification("BSKY_GROWTH", f"Like bot complete — {total_liked} liked, {total_skipped} skipped")
+                    send_notification("bluesky-engine", f"Like bot complete — {total_liked} liked, {total_skipped} skipped")
                 runner.clear()
 
             # Show existing log
@@ -1363,10 +1363,10 @@ if page == "FOLLOW":
                 total_errors = sum(r["errors"] for r in results)
                 if runner.stop_requested:
                     st.warning(f"Follow bot stopped: {total_followed} followed, {total_liked} liked, {total_errors} errors")
-                    send_notification("BSKY_GROWTH", f"Follow bot stopped — {total_followed} followed")
+                    send_notification("bluesky-engine", f"Follow bot stopped — {total_followed} followed")
                 else:
                     st.success(f"Follow bot complete: {total_followed} followed, {total_liked} liked, {total_errors} errors")
-                    send_notification("BSKY_GROWTH", f"Follow bot complete — {total_followed} followed, {total_liked} liked")
+                    send_notification("bluesky-engine", f"Follow bot complete — {total_followed} followed, {total_liked} liked")
                 runner.clear()
 
             # Show existing log
@@ -1596,10 +1596,10 @@ if page == "UNFOLLOW":
                 total_errors = sum(r["errors"] for r in results)
                 if runner.stop_requested:
                     st.warning(f"Unfollow bot stopped: {total_unfollowed} unfollowed, {total_skipped} skipped, {total_errors} errors")
-                    send_notification("BSKY_GROWTH", f"Unfollow bot stopped — {total_unfollowed} unfollowed")
+                    send_notification("bluesky-engine", f"Unfollow bot stopped — {total_unfollowed} unfollowed")
                 else:
                     st.success(f"Unfollow bot complete: {total_unfollowed} unfollowed, {total_skipped} skipped, {total_errors} errors")
-                    send_notification("BSKY_GROWTH", f"Unfollow bot complete — {total_unfollowed} unfollowed, {total_skipped} skipped")
+                    send_notification("bluesky-engine", f"Unfollow bot complete — {total_unfollowed} unfollowed, {total_skipped} skipped")
                 runner.clear()
 
             # Show existing log
