@@ -234,9 +234,15 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     border-right: 1px solid #222;
     padding: 20px 16px;
 }
-/* Collapse button styling */
-[data-testid="stSidebarCollapseButton"] {
-    color: #888 !important;
+/* Collapse/expand button styling */
+[data-testid="stSidebarCollapseButton"],
+[data-testid="stSidebarCollapsedControl"] {
+    color: #00d4ff !important;
+}
+/* Force sidebar visible */
+[data-testid="stSidebar"][aria-expanded="false"] {
+    transform: translateX(0) !important;
+    visibility: visible !important;
 }
 /* Sidebar nav buttons — base reset for all button types */
 section[data-testid="stSidebar"] button[kind="secondary"],
