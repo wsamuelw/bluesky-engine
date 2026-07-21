@@ -672,7 +672,96 @@ if "verification_results" not in st.session_state:
 
 
 # =============================================================
-# SIDEBAR NAVIGATION
+# LOGIN PAGE (shown when not verified)
+# =============================================================
+
+if not st.session_state.verified:
+    # Center the login form
+    col1, col2, col3 = st.columns([1, 2, 1])
+
+    with col2:
+        # Brand header
+        st.markdown("""
+        <div style="text-align:center;margin-bottom:40px;margin-top:60px">
+            <span style="color:#00d4ff;font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-1px">bsky_growth</span>
+            <div style="color:#888;font-size:13px;margin-top:8px;font-family:'JetBrains Mono',monospace">Bluesky Growth Platform</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Login panel
+        st.markdown("""
+        <div class="panel">
+            <div class="panel-header">
+                <span class="title">Sign In</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown('<span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Handle</span>', unsafe_allow_html=True)
+        st.text_input(
+            "HANDLE",
+            value=st.session_state.get("handle", ""),
+            placeholder="alice.bsky.social",
+            key="login_handle",
+            label_visibility="collapsed",
+        )
+
+        st.markdown('<span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">App Password</span>', unsafe_allow_html=True)
+        st.text_input(
+            "APP PASSWORD",
+            value=st.session_state.get("password", ""),
+            type="password",
+            placeholder="xxxx-xxxx-xxxx-xxxx",
+            key="login_password",
+            label_visibility="collapsed",
+        )
+
+        submitted = st.button("SIGN IN", key="login_submit", use_container_width=True, type="primary")
+
+        if submitted:
+            handle = st.session_state.login_handle.strip()
+            password = st.session_state.login_password.strip()
+
+            if not handle or not password:
+                st.error("Please enter both handle and app password.")
+            elif "." not in handle:
+                st.error(f"Invalid handle '{handle}'. Use full format like alice.bsky.social")
+            else:
+                try:
+                    with st.spinner("Verifying with Bluesky..."):
+                        client = get_bluesky_client(handle, password)
+                        profile = client.app.bsky.actor.get_profile({"actor": handle})
+                    st.session_state.handle = handle
+                    st.session_state.password = password
+                    st.session_state.verified = True
+                    st.session_state.client = client
+                    st.session_state.profile_handle = profile.handle
+                    st.session_state.profile_followers = profile.followers_count or 0
+                    st.rerun()
+                except AtProtocolError:
+                    st.error("Authentication failed. Check your handle and app password.")
+                except Exception:
+                    st.error("Something went wrong. Please try again.")
+
+        # Instructions
+        st.markdown("""
+        <div style="margin-top:30px;padding:16px;background:#111;border:1px solid #222;border-radius:4px">
+            <div style="font-size:12px;color:#888;line-height:1.8">
+                <strong style="color:#c8c8c8">How to get app passwords:</strong><br>
+                1. Go to <a href="https://bsky.app/settings/app-passwords" target="_blank" style="color:#00d4ff">bsky.app → Settings → App Passwords</a><br>
+                2. Click "Generate"<br>
+                3. Copy the password (looks like <code style="color:#00d4ff;background:#1a1a1a;padding:2px 4px">abcd-efgh-ijkl-mnop</code>)<br>
+                4. Paste it above
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Stop here - don't show the main app
+    st.stop()
+
+
+# =============================================================
+# SIDEBAR NAVIGATION (shown only when verified)
 # =============================================================
 
 # Initialize active page
@@ -683,14 +772,22 @@ with st.sidebar:
     # Brand name
     version = get_version()
     st.markdown(f"""
-    <div style="margin-bottom:32px">
+    <div style="margin-bottom:16px">
         <span style="color:#00d4ff;font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-0.5px">bsky_growth</span>
         <span style="color:#555;font-size:14px;font-family:'JetBrains Mono',monospace"> {version}</span>
     </div>
     """, unsafe_allow_html=True)
 
-    # Navigation buttons - same style as SAVE & VERIFY button
-    for nav_item in ["DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "SETTINGS"]:
+    # Account info
+    st.markdown(f"""
+    <div style="margin-bottom:24px;padding:8px 0;border-bottom:1px solid #222">
+        <span style="color:#00d4ff;font-size:12px;font-family:'JetBrains Mono',monospace">@{st.session_state.profile_handle}</span>
+        <span style="color:#888;font-size:11px;font-family:'JetBrains Mono',monospace;margin-left:8px">{st.session_state.profile_followers:,} followers</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Navigation buttons
+    for nav_item in ["DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW"]:
         is_active = st.session_state.active_page == nav_item
         if st.button(
             nav_item,
@@ -700,6 +797,29 @@ with st.sidebar:
         ):
             st.session_state.active_page = nav_item
             st.rerun()
+
+    # Disconnect button at bottom of sidebar
+    st.markdown("<div style='margin-top:40px'></div>", unsafe_allow_html=True)
+    if st.button("DISCONNECT", key="sidebar_disconnect", use_container_width=True):
+        st.session_state.confirm_disconnect_sidebar = True
+
+    if st.session_state.get("confirm_disconnect_sidebar"):
+        st.warning("Disconnect?")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Yes", key="confirm_sidebar_yes", type="primary"):
+                st.session_state.handle = ""
+                st.session_state.password = ""
+                st.session_state.verified = False
+                st.session_state.client = None
+                st.session_state.profile_handle = ""
+                st.session_state.profile_followers = 0
+                st.session_state.confirm_disconnect_sidebar = False
+                st.rerun()
+        with col2:
+            if st.button("No", key="confirm_sidebar_no"):
+                st.session_state.confirm_disconnect_sidebar = False
+                st.rerun()
 
 page = st.session_state.active_page
 
@@ -1487,146 +1607,3 @@ if page == "UNFOLLOW":
                 unfollow_log_placeholder.code(log_text, language="bash")
             else:
                 unfollow_log_placeholder.code("Waiting to start...", language="bash")
-
-
-# =============================================================
-# SETTINGS TAB
-# =============================================================
-
-if page == "SETTINGS":
-    st.markdown("""
-    <div style="margin-bottom:20px">
-        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Account Configuration</span>
-        <br>
-        <span style="font-size:13px;color:#888">Add your Bluesky account. App password is stored in session only.</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Account credentials panel
-    st.markdown("""
-    <div class="panel">
-        <div class="panel-header">
-            <span class="title">Account Credentials</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown('<span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Handle</span>', unsafe_allow_html=True)
-        st.text_input(
-            "HANDLE",
-            value=st.session_state.get("handle", ""),
-            placeholder="alice.bsky.social",
-            key="settings_handle",
-            label_visibility="collapsed",
-        )
-
-    with col2:
-        st.markdown('<span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">App Password</span>', unsafe_allow_html=True)
-        st.text_input(
-            "APP PASSWORD",
-            value=st.session_state.get("password", ""),
-            type="password",
-            placeholder="xxxx-xxxx-xxxx-xxxx",
-            key="settings_password",
-            label_visibility="collapsed",
-        )
-
-    submitted = st.button("SAVE & VERIFY", key="save_accounts", use_container_width=True)
-
-    # Save button with auth verification
-    if submitted:
-        handle = st.session_state.settings_handle.strip()
-        password = st.session_state.settings_password.strip()
-
-        if not handle or not password:
-            st.error("Please enter both handle and app password.")
-        elif "." not in handle:
-            st.error(f"Invalid handle '{handle}'. Use full format like alice.bsky.social")
-        else:
-            try:
-                with st.spinner("Verifying with Bluesky..."):
-                    client = get_bluesky_client(handle, password)
-                    profile = client.app.bsky.actor.get_profile({"actor": handle})
-                st.session_state.handle = handle
-                st.session_state.password = password
-                st.session_state.verified = True
-                st.session_state.client = client
-                st.session_state.profile_handle = profile.handle
-                st.session_state.profile_followers = profile.followers_count or 0
-                st.success(f"Authenticated as @{profile.handle} · {profile.followers_count or 0:,} followers")
-                st.rerun()
-            except AtProtocolError:
-                st.session_state.verified = False
-                st.error("Authentication failed. Check your handle and app password.")
-            except Exception:
-                st.session_state.verified = False
-                st.error("Something went wrong. Please try again.")
-
-    # Verification status - shows AFTER button handler
-    if st.session_state.verified:
-        st.markdown(f"""
-        <div class="panel" style="margin-top:20px">
-            <div class="panel-header">
-                <span class="title">Connected Account</span>
-                <span class="status live">VERIFIED</span>
-            </div>
-            <div class="panel-body">
-                <span style="color:#00d4ff;font-size:14px;font-weight:700">@{st.session_state.profile_handle}</span>
-                <span style="color:#888;font-size:12px;margin-left:12px">{st.session_state.profile_followers:,} followers</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("DISCONNECT", key="disconnect_account"):
-            st.session_state.confirm_disconnect = True
-
-        if st.session_state.get("confirm_disconnect"):
-            st.warning("Disconnect account? All bot sessions will stop.")
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("Yes, disconnect", key="confirm_disconnect_yes", type="primary"):
-                    st.session_state.handle = ""
-                    st.session_state.password = ""
-                    st.session_state.settings_handle = ""
-                    st.session_state.settings_password = ""
-                    st.session_state.verified = False
-                    st.session_state.client = None
-                    st.session_state.profile_handle = ""
-                    st.session_state.profile_followers = 0
-                    st.session_state.confirm_disconnect = False
-                    st.rerun()
-            with col2:
-                if st.button("Cancel", key="confirm_disconnect_no"):
-                    st.session_state.confirm_disconnect = False
-                    st.rerun()
-    else:
-        st.markdown("""
-        <div class="panel" style="margin-top:20px">
-            <div class="panel-header">
-                <span class="title">Connected Account</span>
-                <span class="status idle">NOT VERIFIED</span>
-            </div>
-            <div class="panel-body">
-                <span style="color:#888;font-size:12px">No account connected. Enter credentials above and click Save & Verify.</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # Instructions
-    st.markdown("""
-    <div class="panel" style="margin-top:20px">
-        <div class="panel-header">
-            <span class="title">How to get app passwords</span>
-        </div>
-        <div class="panel-body" style="font-size:12px;color:#888;line-height:1.8">
-            1. Go to <a href="https://bsky.app/settings/app-passwords" target="_blank" style="color:#00d4ff">bsky.app → Settings → App Passwords</a><br>
-            2. Click "Generate"<br>
-            3. Copy the password (looks like <code style="color:#00d4ff;background:#1a1a1a;padding:2px 4px">abcd-efgh-ijkl-mnop</code>)<br>
-            4. Paste it above<br>
-            <br>
-            <span style="color:#888">Passwords are stored in your browser session only. They are never saved to disk or sent anywhere except Bluesky's API.</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
