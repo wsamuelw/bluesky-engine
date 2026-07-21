@@ -97,16 +97,20 @@ def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_ma
         return False
 
     handle = account["handle"]
-    password = account["password"]
+    password = account.get("password", "")
+    client = account.get("client")
 
-    # Login
-    try:
-        client = Client()
-        client.login(handle, password)
-        log(f"[{ts()}] OK   [{handle}] Authenticated")
-    except Exception as e:
-        log(f"[{ts()}] ERR  [{handle}] Auth failed: {e}")
-        return {"handle": handle, "liked": 0, "skipped": 0, "errors": 1}
+    # Login if no client provided
+    if not client:
+        try:
+            client = Client()
+            client.login(handle, password)
+            log(f"[{ts()}] OK   [{handle}] Authenticated")
+        except Exception as e:
+            log(f"[{ts()}] ERR  [{handle}] Auth failed: {e}")
+            return {"handle": handle, "liked": 0, "skipped": 0, "errors": 1}
+    else:
+        log(f"[{ts()}] OK   [{handle}] Using cached client")
 
     # Pull following
     log(f"[{ts()}] INFO [{handle}] Pulling following list...")

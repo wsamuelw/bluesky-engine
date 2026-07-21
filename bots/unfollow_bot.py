@@ -98,16 +98,21 @@ def _run_single_account(account, days_threshold, daily_cap, delay_min, delay_max
         return False
 
     handle = account["handle"]
-    password = account["password"]
+    password = account.get("password", "")
+    client = account.get("client")
 
-    # Login
-    try:
-        client = Client()
-        profile = client.login(handle, password)
-        log(f"[{ts()}] OK   [{handle}] Authenticated")
-    except Exception as e:
-        log(f"[{ts()}] ERR  [{handle}] Auth failed: {e}")
-        return {"handle": handle, "unfollowed": 0, "skipped": 0, "errors": 1}
+    # Login if no client provided
+    if not client:
+        try:
+            client = Client()
+            profile = client.login(handle, password)
+            log(f"[{ts()}] OK   [{handle}] Authenticated")
+        except Exception as e:
+            log(f"[{ts()}] ERR  [{handle}] Auth failed: {e}")
+            return {"handle": handle, "unfollowed": 0, "skipped": 0, "errors": 1}
+    else:
+        profile = client.app.bsky.actor.get_profile({"actor": handle})
+        log(f"[{ts()}] OK   [{handle}] Using cached client")
 
     # Pull who you follow (with dates from repo records)
     log(f"[{ts()}] INFO [{handle}] Pulling following list with dates...")

@@ -26,12 +26,23 @@ def get_version():
         pass
     return "v1.0"
 
+from atproto.exceptions import AtProtocolError
 from utils.auth import login
 from utils.stats import get_stats
 from utils.tracker import load_history, save_snapshot, get_chart_data
 from bots.like_bot import like_bot_run
 from bots.follow_bot import follow_bot_run
 from bots.unfollow_bot import unfollow_bot_run, get_unfollow_preview
+
+
+# =============================================================
+# CACHED BLUESKY CLIENT
+# =============================================================
+
+@st.cache_resource
+def get_bluesky_client(handle: str, password: str):
+    """Returns a cached authenticated client. Reused across reruns."""
+    return login(handle, password)
 
 
 # =============================================================
@@ -152,6 +163,30 @@ def get_running_bot_name():
     elif st.session_state.unfollow_runner.running:
         return "UNFOLLOW"
     return None
+
+
+@st.fragment(run_every=2)
+def live_log_panel(runner: BotRunner):
+    """Self-refreshing log panel that doesn't freeze the UI."""
+    logs = runner.get_logs()
+    if logs:
+        log_text = "\n".join(logs[-50:])
+        st.code(log_text, language="bash")
+    else:
+        st.code("Starting bot...", language="bash")
+    if not runner.running:
+        st.rerun()
+
+
+def send_notification(title: str, body: str):
+    """Send a browser notification if permission is granted."""
+    components.html(f"""
+    <script>
+    if ("Notification" in window && Notification.permission === "granted") {{
+        new Notification("{title}", {{body: "{body}"}});
+    }}
+    </script>
+    """, height=0)
 
 
 # =============================================================
@@ -568,9 +603,21 @@ header {visibility: hidden;}
     color: #00d4ff;
     background: #1a1a1a;
 }
-}
 .stTabs [data-baseweb="tab-highlight"] {
     background: #00d4ff;
+}
+/* Stop button - red when running */
+button[key="stop_like"],
+button[key="stop_follow"],
+button[key="stop_unfollow"] {
+    background: #ff4444 !important;
+    border-color: #ff4444 !important;
+}
+button[key="stop_like"]:hover,
+button[key="stop_follow"]:hover,
+button[key="stop_unfollow"]:hover {
+    background: #ff6666 !important;
+    border-color: #ff6666 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -592,6 +639,15 @@ if "target" not in st.session_state:
 
 if "verified" not in st.session_state:
     st.session_state.verified = False
+
+if "profile_handle" not in st.session_state:
+    st.session_state.profile_handle = ""
+
+if "profile_followers" not in st.session_state:
+    st.session_state.profile_followers = 0
+
+if "client" not in st.session_state:
+    st.session_state.client = None
 
 if "bot_running" not in st.session_state:
     st.session_state.bot_running = False
@@ -650,14 +706,34 @@ if page == "DASHBOARD":
     elif not st.session_state.verified:
         st.info("Please verify your account in the SETTINGS tab first.")
     else:
-        # Fetch stats for the account
-        try:
-            from utils.auth import login
-            from utils.stats import get_stats
+        # Refresh button with cache age
+        import time
+        now = time.time()
+        cache_age = now - st.session_state.get("stats_timestamp", 0)
+        if cache_age < 60:
+            age_label = "just now"
+        else:
+            age_label = f"{int(cache_age / 60)}m ago"
 
-            with st.spinner("Fetching stats..."):
-                client = login(st.session_state.handle, st.session_state.password)
-                stats = get_stats(st.session_state.handle, client)
+        col_title, col_age, col_refresh = st.columns([2, 1, 1])
+        with col_age:
+            st.markdown(f'<div style="padding:10px 0;font-size:11px;color:#666;text-align:right">Updated {age_label}</div>', unsafe_allow_html=True)
+        with col_refresh:
+            if st.button("🔄 Refresh", key="refresh_stats", use_container_width=True):
+                st.session_state.stats_timestamp = 0  # Force refresh
+                st.rerun()
+
+        # Fetch stats for the account (cached for 5 minutes)
+        try:
+
+            if "cached_stats" in st.session_state and cache_age < 300:
+                stats = st.session_state.cached_stats
+            else:
+                with st.spinner("Fetching stats..."):
+                    client = get_bluesky_client(st.session_state.handle, st.session_state.password)
+                    stats = get_stats(st.session_state.handle, client)
+                st.session_state.cached_stats = stats
+                st.session_state.stats_timestamp = now
 
             followers = stats["followers"]
             following = stats["following"]
@@ -691,6 +767,23 @@ if page == "DASHBOARD":
 
             # Save snapshot
             save_snapshot(followers, following)
+
+            # Request notification permission (once per session)
+            if not st.session_state.get("notification_requested"):
+                components.html("""
+                <script>
+                if ("Notification" in window && Notification.permission === "default") {
+                    Notification.requestPermission();
+                }
+                </script>
+                """, height=0)
+                st.session_state.notification_requested = True
+
+            # Contextual guidance for edge cases
+            if followers == 0:
+                st.info("Your account has no followers yet. Use the FOLLOW tab to start growing.")
+            elif non_followers > following * 0.8 and following > 100:
+                st.warning(f"High non-follower ratio ({non_followers:,} of {following:,}). Consider running the UNFOLLOW bot to clean up.")
 
             # Dashboard cards - asymmetric grid
             # Row 1 - Hero cards (2 columns each)
@@ -808,13 +901,13 @@ if page == "LIKE":
         col1, col2, col3, col4, col5 = st.columns(5)
 
         with col1:
-            batch_size = st.number_input("BATCH SIZE", min_value=10, max_value=500, value=200, step=10,
+            batch_size = st.number_input("BATCH SIZE", min_value=10, max_value=500, value=300, step=10,
                 help="Number of non-followers to like per run. Start with 50 to test.")
         with col2:
             likes_per_user = st.number_input("LIKES PER USER", min_value=1, max_value=5, value=2, step=1,
                 help="How many posts to like per person. 2 is recommended.")
         with col3:
-            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=1000, value=400, step=10, key="like_daily_cap",
+            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=1000, value=800, step=10, key="like_daily_cap",
                 help="Maximum likes per day across all runs. Helps avoid rate limits.")
         with col4:
             delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=5, step=1,
@@ -840,7 +933,12 @@ if page == "LIKE":
                 run_clicked = st.button("▶ RUN LIKE", key="run_like", use_container_width=True)
 
         with col_info:
-            status_text = "RUNNING — click STOP to halt" if runner.running else f"@{st.session_state.handle} · batch={batch_size} · delay={delay_min}-{delay_max}s"
+            if runner.running:
+                status_text = "RUNNING — click STOP to halt"
+            else:
+                est_min = (batch_size * delay_min * likes_per_user) / 60
+                est_max = (batch_size * delay_max * likes_per_user) / 60
+                status_text = f"@{st.session_state.handle} · ~{est_min:.0f}-{est_max:.0f} min · batch={batch_size} · delay={delay_min}-{delay_max}s"
             st.markdown(f"""
             <div style="padding:10px 0;font-size:12px;color:#888">
                 <strong style="color:#c8c8c8">{status_text}</strong>
@@ -848,11 +946,13 @@ if page == "LIKE":
             """, unsafe_allow_html=True)
 
         # Live log
-        st.markdown("""
+        status_class = "live" if runner.running else "idle"
+        status_label = "LIVE" if runner.running else "IDLE"
+        st.markdown(f"""
         <div class="panel" style="margin-top:20px">
             <div class="panel-header">
                 <span class="title">Live Output</span>
-                <span class="status idle" id="log-status">IDLE</span>
+                <span class="status {status_class}">{status_label}</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -870,7 +970,15 @@ if page == "LIKE":
                 st.error("Min delay must be <= max delay")
             else:
                 # Start bot in background thread
-                account = [{"handle": st.session_state.handle, "password": st.session_state.password, "enabled": True}]
+                account = [{"handle": st.session_state.handle, "password": st.session_state.password, "client": st.session_state.get("client"), "enabled": True}]
+                # Store settings for retry
+                st.session_state.like_settings = {
+                    "account": account,
+                    "batch_size": batch_size,
+                    "likes_per_user": likes_per_user,
+                    "delay_min": delay_min,
+                    "delay_max": delay_max,
+                }
                 runner.start(
                     like_bot_run,
                     account,
@@ -881,19 +989,9 @@ if page == "LIKE":
                 )
                 st.rerun()
 
-        # Bot is running - show logs and auto-refresh
+        # Bot is running - show logs with auto-refresh fragment
         if runner.running:
-            # Display current logs
-            logs = runner.get_logs()
-            if logs:
-                log_text = "\n".join(logs[-50:])
-                log_placeholder.code(log_text, language="bash")
-            else:
-                log_placeholder.code("Starting bot...", language="bash")
-
-            # Auto-refresh every 2 seconds to show new logs
-            time.sleep(2)
-            st.rerun()
+            live_log_panel(runner)
 
         # Bot finished - show results
         if not runner.running:
@@ -911,15 +1009,31 @@ if page == "LIKE":
                     st.error(f"Network error: {error}. Check your connection and try again.")
                 else:
                     st.error(f"Bot error: {error}")
-                runner.clear()
+                # Retry button
+                if st.button("🔄 RETRY", key="retry_like"):
+                    settings = st.session_state.get("like_settings", {})
+                    if settings:
+                        runner.start(
+                            like_bot_run,
+                            settings["account"],
+                            settings["batch_size"],
+                            settings["likes_per_user"],
+                            settings["delay_min"],
+                            settings["delay_max"],
+                        )
+                        st.rerun()
+                else:
+                    runner.clear()
             elif results:
                 total_liked = sum(r["liked"] for r in results)
                 total_skipped = sum(r["skipped"] for r in results)
                 total_errors = sum(r["errors"] for r in results)
                 if runner.stop_requested:
                     st.warning(f"Like bot stopped: {total_liked} liked, {total_skipped} skipped, {total_errors} errors")
+                    send_notification("BSKY_GROWTH", f"Like bot stopped — {total_liked} liked")
                 else:
                     st.success(f"Like bot complete: {total_liked} liked, {total_skipped} skipped, {total_errors} errors")
+                    send_notification("BSKY_GROWTH", f"Like bot complete — {total_liked} liked, {total_skipped} skipped")
                 runner.clear()
 
             # Show existing log
@@ -974,10 +1088,10 @@ if page == "FOLLOW":
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
-            pull_limit = st.number_input("PULL LIMIT", min_value=10, max_value=500, value=200, step=10,
+            pull_limit = st.number_input("PULL LIMIT", min_value=10, max_value=500, value=300, step=10,
                 help="Max followers to pull from target account. 200 is a good start.")
         with col2:
-            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=200, value=75, step=5,
+            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=200, value=150, step=5,
                 help="Max follows per account per run. Keeps you under rate limits.")
         with col3:
             follow_delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=5, step=1, key="follow_delay_min",
@@ -1005,7 +1119,12 @@ if page == "FOLLOW":
                 follow_run_clicked = st.button("▶ RUN FOLLOW", key="run_follow", use_container_width=True)
 
         with col_info:
-            status_text = "RUNNING — click STOP to halt" if runner.running else f"target {'✓' if st.session_state.target.strip() else '✗'} · pull={pull_limit} · cap={daily_cap} · delay={follow_delay_min}-{follow_delay_max}s"
+            if runner.running:
+                status_text = "RUNNING — click STOP to halt"
+            else:
+                est_min = (daily_cap * follow_delay_min) / 60
+                est_max = (daily_cap * follow_delay_max) / 60
+                status_text = f"target {'✓' if st.session_state.target.strip() else '✗'} · ~{est_min:.0f}-{est_max:.0f} min · cap={daily_cap} · delay={follow_delay_min}-{follow_delay_max}s"
             st.markdown(f"""
             <div style="padding:10px 0;font-size:12px;color:#888">
                 <strong style="color:#c8c8c8">{status_text}</strong>
@@ -1013,11 +1132,13 @@ if page == "FOLLOW":
             """, unsafe_allow_html=True)
 
         # Live log
-        st.markdown("""
+        status_class = "live" if runner.running else "idle"
+        status_label = "LIVE" if runner.running else "IDLE"
+        st.markdown(f"""
         <div class="panel" style="margin-top:20px">
             <div class="panel-header">
                 <span class="title">Live Output</span>
-                <span class="status idle">IDLE</span>
+                <span class="status {status_class}">{status_label}</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1045,9 +1166,19 @@ if page == "FOLLOW":
                     valid_accounts = [{
                         "handle": st.session_state.handle,
                         "password": st.session_state.password,
+                        "client": st.session_state.get("client"),
                         "target": target,
                         "enabled": True
                     }]
+                    # Store settings for retry
+                    st.session_state.follow_settings = {
+                        "accounts": valid_accounts,
+                        "pull_limit": pull_limit,
+                        "daily_cap": daily_cap,
+                        "delay_min": follow_delay_min,
+                        "delay_max": follow_delay_max,
+                        "auto_like": auto_like,
+                    }
                     runner.start(
                         follow_bot_run,
                         valid_accounts,
@@ -1059,19 +1190,9 @@ if page == "FOLLOW":
                     )
                     st.rerun()
 
-        # Bot is running - show logs and auto-refresh
+        # Bot is running - show logs with auto-refresh fragment
         if runner.running:
-            # Display current logs
-            logs = runner.get_logs()
-            if logs:
-                log_text = "\n".join(logs[-50:])
-                follow_log_placeholder.code(log_text, language="bash")
-            else:
-                follow_log_placeholder.code("Starting bot...", language="bash")
-
-            # Auto-refresh every 2 seconds to show new logs
-            time.sleep(2)
-            st.rerun()
+            live_log_panel(runner)
 
         # Bot finished - show results
         if not runner.running:
@@ -1089,15 +1210,32 @@ if page == "FOLLOW":
                     st.error(f"Network error: {error}. Check your connection and try again.")
                 else:
                     st.error(f"Bot error: {error}")
-                runner.clear()
+                # Retry button
+                if st.button("🔄 RETRY", key="retry_follow"):
+                    settings = st.session_state.get("follow_settings", {})
+                    if settings:
+                        runner.start(
+                            follow_bot_run,
+                            settings["accounts"],
+                            settings["pull_limit"],
+                            settings["daily_cap"],
+                            settings["delay_min"],
+                            settings["delay_max"],
+                            settings["auto_like"],
+                        )
+                        st.rerun()
+                else:
+                    runner.clear()
             elif results:
                 total_followed = sum(r["followed"] for r in results)
                 total_liked = sum(r["liked"] for r in results)
                 total_errors = sum(r["errors"] for r in results)
                 if runner.stop_requested:
                     st.warning(f"Follow bot stopped: {total_followed} followed, {total_liked} liked, {total_errors} errors")
+                    send_notification("BSKY_GROWTH", f"Follow bot stopped — {total_followed} followed")
                 else:
                     st.success(f"Follow bot complete: {total_followed} followed, {total_liked} liked, {total_errors} errors")
+                    send_notification("BSKY_GROWTH", f"Follow bot complete — {total_followed} followed, {total_liked} liked")
                 runner.clear()
 
             # Show existing log
@@ -1139,7 +1277,7 @@ if page == "UNFOLLOW":
             days_threshold = st.number_input("DAYS THRESHOLD", min_value=1, max_value=365, value=30, step=1,
                 help="Only unfollow if followed more than X days ago. 30 is recommended.")
         with col2:
-            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=200, value=75, step=5,
+            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=300, value=200, step=5,
                 key="unfollow_daily_cap", help="Max unfollows per run. Keeps you under rate limits.")
         with col3:
             unfollow_delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=5, step=1,
@@ -1186,7 +1324,12 @@ if page == "UNFOLLOW":
                 unfollow_clicked = st.button("🚪 RUN UNFOLLOW", key="run_unfollow", use_container_width=True)
 
         with col_info:
-            status_text = "RUNNING — click STOP to halt" if runner.running else f"threshold={days_threshold}d · cap={daily_cap} · delay={unfollow_delay_min}-{unfollow_delay_max}s · {len(exemptions)} exemptions"
+            if runner.running:
+                status_text = "RUNNING — click STOP to halt"
+            else:
+                est_min = (daily_cap * unfollow_delay_min) / 60
+                est_max = (daily_cap * unfollow_delay_max) / 60
+                status_text = f"~{est_min:.0f}-{est_max:.0f} min · threshold={days_threshold}d · cap={daily_cap} · delay={unfollow_delay_min}-{unfollow_delay_max}s · {len(exemptions)} exemptions"
             st.markdown(f"""
             <div style="padding:10px 0;font-size:12px;color:#888">
                 <strong style="color:#c8c8c8">{status_text}</strong>
@@ -1222,11 +1365,13 @@ if page == "UNFOLLOW":
                         st.metric("Non-followers", f"{r['non_followers']:,}")
 
         # Live log
-        st.markdown("""
+        status_class = "live" if runner.running else "idle"
+        status_label = "LIVE" if runner.running else "IDLE"
+        st.markdown(f"""
         <div class="panel" style="margin-top:20px">
             <div class="panel-header">
                 <span class="title">Live Output</span>
-                <span class="status idle">IDLE</span>
+                <span class="status {status_class}">{status_label}</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1235,40 +1380,52 @@ if page == "UNFOLLOW":
 
         # Run the bot (when RUN button clicked)
         if not runner.running and unfollow_clicked:
-            # Check if another bot is running
-            if any_bot_running():
-                running_bot = get_running_bot_name()
-                st.error(f"Cannot start Unfollow Bot — {running_bot} Bot is already running. Stop it first or wait for it to finish.")
-            # Validate delays
-            elif unfollow_delay_min > unfollow_delay_max:
-                st.error("Min delay must be <= max delay")
-            else:
-                # Start bot in background thread
-                account = [{"handle": st.session_state.handle, "password": st.session_state.password, "enabled": True}]
-                runner.start(
-                    unfollow_bot_run,
-                    account,
-                    days_threshold,
-                    daily_cap,
-                    unfollow_delay_min,
-                    unfollow_delay_max,
-                    exemptions,
-                )
-                st.rerun()
+            st.session_state.confirm_unfollow = True
 
-        # Bot is running - show logs and auto-refresh
+        # Confirmation dialog for unfollow
+        if st.session_state.get("confirm_unfollow") and not runner.running:
+            st.warning(f"⚠️ About to unfollow non-followers older than {days_threshold} days (up to {daily_cap} per run). This action is irreversible.")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Yes, start unfollow", key="confirm_unfollow_yes", type="primary"):
+                    st.session_state.confirm_unfollow = False
+                    # Check if another bot is running
+                    if any_bot_running():
+                        running_bot = get_running_bot_name()
+                        st.error(f"Cannot start Unfollow Bot — {running_bot} Bot is already running. Stop it first or wait for it to finish.")
+                    # Validate delays
+                    elif unfollow_delay_min > unfollow_delay_max:
+                        st.error("Min delay must be <= max delay")
+                    else:
+                        # Start bot in background thread
+                        account = [{"handle": st.session_state.handle, "password": st.session_state.password, "client": st.session_state.get("client"), "enabled": True}]
+                        # Store settings for retry
+                        st.session_state.unfollow_settings = {
+                            "account": account,
+                            "days_threshold": days_threshold,
+                            "daily_cap": daily_cap,
+                            "delay_min": unfollow_delay_min,
+                            "delay_max": unfollow_delay_max,
+                            "exemptions": exemptions,
+                        }
+                        runner.start(
+                            unfollow_bot_run,
+                            account,
+                            days_threshold,
+                            daily_cap,
+                            unfollow_delay_min,
+                            unfollow_delay_max,
+                            exemptions,
+                        )
+                        st.rerun()
+            with col2:
+                if st.button("Cancel", key="confirm_unfollow_no"):
+                    st.session_state.confirm_unfollow = False
+                    st.rerun()
+
+        # Bot is running - show logs with auto-refresh fragment
         if runner.running:
-            # Display current logs
-            logs = runner.get_logs()
-            if logs:
-                log_text = "\n".join(logs[-50:])
-                unfollow_log_placeholder.code(log_text, language="bash")
-            else:
-                unfollow_log_placeholder.code("Starting bot...", language="bash")
-
-            # Auto-refresh every 2 seconds to show new logs
-            time.sleep(2)
-            st.rerun()
+            live_log_panel(runner)
 
         # Bot finished - show results
         if not runner.running:
@@ -1286,15 +1443,32 @@ if page == "UNFOLLOW":
                     st.error(f"Network error: {error}. Check your connection and try again.")
                 else:
                     st.error(f"Bot error: {error}")
-                runner.clear()
+                # Retry button
+                if st.button("🔄 RETRY", key="retry_unfollow"):
+                    settings = st.session_state.get("unfollow_settings", {})
+                    if settings:
+                        runner.start(
+                            unfollow_bot_run,
+                            settings["account"],
+                            settings["days_threshold"],
+                            settings["daily_cap"],
+                            settings["delay_min"],
+                            settings["delay_max"],
+                            settings["exemptions"],
+                        )
+                        st.rerun()
+                else:
+                    runner.clear()
             elif results:
                 total_unfollowed = sum(r["unfollowed"] for r in results)
                 total_skipped = sum(r["skipped"] for r in results)
                 total_errors = sum(r["errors"] for r in results)
                 if runner.stop_requested:
                     st.warning(f"Unfollow bot stopped: {total_unfollowed} unfollowed, {total_skipped} skipped, {total_errors} errors")
+                    send_notification("BSKY_GROWTH", f"Unfollow bot stopped — {total_unfollowed} unfollowed")
                 else:
                     st.success(f"Unfollow bot complete: {total_unfollowed} unfollowed, {total_skipped} skipped, {total_errors} errors")
+                    send_notification("BSKY_GROWTH", f"Unfollow bot complete — {total_unfollowed} unfollowed, {total_skipped} skipped")
                 runner.clear()
 
             # Show existing log
@@ -1319,52 +1493,117 @@ if page == "SETTINGS":
     </div>
     """, unsafe_allow_html=True)
 
-    # Account input
+    # Account credentials panel
+    st.markdown("""
+    <div class="panel">
+        <div class="panel-header">
+            <span class="title">Account Credentials</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
     col1, col2 = st.columns(2)
 
     with col1:
-        handle = st.text_input(
+        st.markdown('<span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Handle</span>', unsafe_allow_html=True)
+        st.text_input(
             "HANDLE",
-            value=st.session_state.handle,
+            value=st.session_state.get("handle", ""),
             placeholder="alice.bsky.social",
             key="settings_handle",
+            label_visibility="collapsed",
         )
-        st.session_state.handle = handle
 
     with col2:
-        password = st.text_input(
+        st.markdown('<span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">App Password</span>', unsafe_allow_html=True)
+        st.text_input(
             "APP PASSWORD",
-            value=st.session_state.password,
+            value=st.session_state.get("password", ""),
             type="password",
             placeholder="xxxx-xxxx-xxxx-xxxx",
             key="settings_password",
+            label_visibility="collapsed",
         )
-        st.session_state.password = password
+
+    submitted = st.button("SAVE & VERIFY", key="save_accounts", use_container_width=True)
 
     # Save button with auth verification
-    if st.button("SAVE & VERIFY", key="save_accounts"):
-        handle = st.session_state.handle.strip()
-        password = st.session_state.password.strip()
+    if submitted:
+        handle = st.session_state.settings_handle.strip()
+        password = st.session_state.settings_password.strip()
 
         if not handle or not password:
             st.error("Please enter both handle and app password.")
+        elif "." not in handle:
+            st.error(f"Invalid handle '{handle}'. Use full format like alice.bsky.social")
         else:
             try:
-                from utils.auth import login
-                client = login(handle, password)
-                profile = client.app.bsky.actor.get_profile({"actor": handle})
+                with st.spinner("Verifying with Bluesky..."):
+                    client = get_bluesky_client(handle, password)
+                    profile = client.app.bsky.actor.get_profile({"actor": handle})
+                st.session_state.handle = handle
+                st.session_state.password = password
                 st.session_state.verified = True
+                st.session_state.client = client
+                st.session_state.profile_handle = profile.handle
+                st.session_state.profile_followers = profile.followers_count or 0
                 st.success(f"Authenticated as @{profile.handle} · {profile.followers_count or 0:,} followers")
                 st.rerun()
-            except Exception as e:
+            except AtProtocolError:
                 st.session_state.verified = False
-                st.error(f"Authentication failed: {e}")
+                st.error("Authentication failed. Check your handle and app password.")
+            except Exception:
+                st.session_state.verified = False
+                st.error("Something went wrong. Please try again.")
 
     # Verification status - shows AFTER button handler
     if st.session_state.verified:
-        st.markdown("✅ Account verified")
+        st.markdown(f"""
+        <div class="panel" style="margin-top:20px">
+            <div class="panel-header">
+                <span class="title">Connected Account</span>
+                <span class="status live">VERIFIED</span>
+            </div>
+            <div class="panel-body">
+                <span style="color:#00d4ff;font-size:14px;font-weight:700">@{st.session_state.profile_handle}</span>
+                <span style="color:#888;font-size:12px;margin-left:12px">{st.session_state.profile_followers:,} followers</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("DISCONNECT", key="disconnect_account"):
+            st.session_state.confirm_disconnect = True
+
+        if st.session_state.get("confirm_disconnect"):
+            st.warning("Disconnect account? All bot sessions will stop.")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Yes, disconnect", key="confirm_disconnect_yes", type="primary"):
+                    st.session_state.handle = ""
+                    st.session_state.password = ""
+                    st.session_state.settings_handle = ""
+                    st.session_state.settings_password = ""
+                    st.session_state.verified = False
+                    st.session_state.client = None
+                    st.session_state.profile_handle = ""
+                    st.session_state.profile_followers = 0
+                    st.session_state.confirm_disconnect = False
+                    st.rerun()
+            with col2:
+                if st.button("Cancel", key="confirm_disconnect_no"):
+                    st.session_state.confirm_disconnect = False
+                    st.rerun()
     else:
-        st.markdown("— Not verified")
+        st.markdown("""
+        <div class="panel" style="margin-top:20px">
+            <div class="panel-header">
+                <span class="title">Connected Account</span>
+                <span class="status idle">NOT VERIFIED</span>
+            </div>
+            <div class="panel-body">
+                <span style="color:#888;font-size:12px">No account connected. Enter credentials above and click Save & Verify.</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
     # Instructions
     st.markdown("""
@@ -1373,9 +1612,9 @@ if page == "SETTINGS":
             <span class="title">How to get app passwords</span>
         </div>
         <div class="panel-body" style="font-size:12px;color:#888;line-height:1.8">
-            1. Go to bsky.app → Settings → App Passwords<br>
+            1. Go to <a href="https://bsky.app/settings/app-passwords" target="_blank" style="color:#00d4ff">bsky.app → Settings → App Passwords</a><br>
             2. Click "Generate"<br>
-            3. Copy the password (looks like <code>abcd-efgh-ijkl-mnop</code>)<br>
+            3. Copy the password (looks like <code style="color:#00d4ff;background:#1a1a1a;padding:2px 4px">abcd-efgh-ijkl-mnop</code>)<br>
             4. Paste it above<br>
             <br>
             <span style="color:#888">Passwords are stored in your browser session only. They are never saved to disk or sent anywhere except Bluesky's API.</span>

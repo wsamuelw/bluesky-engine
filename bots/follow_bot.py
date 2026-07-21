@@ -98,21 +98,26 @@ def _run_single_account(account, pull_limit, daily_cap, delay_min, delay_max, au
         return False
 
     handle = account["handle"]
-    password = account["password"]
+    password = account.get("password", "")
     target = account.get("target", "")
+    client = account.get("client")
 
     if not target:
         log(f"[{ts()}] ERR  [{handle}] No target account configured")
         return {"handle": handle, "followed": 0, "liked": 0, "errors": 1}
 
-    # Login
-    try:
-        client = Client()
-        profile = client.login(handle, password)
-        log(f"[{ts()}] OK   [{handle}] Authenticated")
-    except Exception as e:
-        log(f"[{ts()}] ERR  [{handle}] Auth failed: {e}")
-        return {"handle": handle, "followed": 0, "liked": 0, "errors": 1}
+    # Login if no client provided
+    if not client:
+        try:
+            client = Client()
+            profile = client.login(handle, password)
+            log(f"[{ts()}] OK   [{handle}] Authenticated")
+        except Exception as e:
+            log(f"[{ts()}] ERR  [{handle}] Auth failed: {e}")
+            return {"handle": handle, "followed": 0, "liked": 0, "errors": 1}
+    else:
+        profile = client.app.bsky.actor.get_profile({"actor": handle})
+        log(f"[{ts()}] OK   [{handle}] Using cached client")
 
     # Get currently following (to avoid duplicates)
     my_did = profile.did
