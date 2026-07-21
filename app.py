@@ -570,7 +570,6 @@ section[data-testid="stSidebar"] button[kind="primary"] {
 /* Hide Streamlit elements */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
-header {visibility: hidden;}
 .stDeployButton {display: none;}
 
 /* Tabs */
