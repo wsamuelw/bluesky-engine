@@ -478,8 +478,15 @@ section[data-testid="stSidebar"] button[kind="primary"] {
 }
 /* Hide form submit hint text */
 div[data-testid="stForm"] small,
-div[data-testid="stCaptionContainer"] {
+div[data-testid="stCaptionContainer"],
+div[data-testid="stForm"] div[data-testid="stCaptionContainer"],
+.stFormSubmitButton ~ div,
+.stFormSubmitButton ~ small,
+.stFormSubmitButton ~ span {
     display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
 }
 
 /* Input fields */
@@ -683,7 +690,7 @@ if "verification_results" not in st.session_state:
 
 if not st.session_state.verified:
     # Center the login form
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([5, 4, 5])
 
     with col2:
         # Brand header
@@ -755,18 +762,20 @@ if not st.session_state.verified:
 
         # Trust message
         st.markdown("""
-        <div style="text-align:center;margin-top:16px;font-size:11px;color:#555;font-family:'JetBrains Mono',monospace">
+        <div style="text-align:center;margin-top:16px;font-size:10px;color:#555;font-family:'JetBrains Mono',monospace">
             Your password is sent directly to Bluesky's servers. We never see or store it.
         </div>
         """, unsafe_allow_html=True)
 
         # Instructions
         st.markdown("""
-        <div style="margin-top:20px;font-size:12px;color:#888;line-height:1.8;font-family:'JetBrains Mono',monospace">
-            <strong style="color:#c8c8c8">How to get an app password:</strong><br>
-            1. Go to <a href="https://bsky.app/settings/app-passwords" target="_blank" style="color:#00d4ff">Settings > App Passwords</a> on bsky.app<br>
-            2. Click "Generate"<br>
-            3. Copy and paste the password above
+        <div style="margin-top:20px;font-size:14px;color:#888;line-height:1.8;font-family:'JetBrains Mono',monospace;display:flex;justify-content:center">
+            <div style="text-align:left">
+                <strong style="color:#c8c8c8">How to get an app password:</strong><br>
+                1. Go to <a href="https://bsky.app/settings/app-passwords" target="_blank" style="color:#00d4ff">Settings > App Passwords</a> on bsky.app<br>
+                2. Click "Add App Password" and enter a name<br>
+                3. Copy and paste the password above
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
