@@ -234,9 +234,9 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     border-right: 1px solid #222;
     padding: 20px 16px;
 }
-/* Hide collapse button - sidebar always visible */
+/* Collapse button styling */
 [data-testid="stSidebarCollapseButton"] {
-    display: none !important;
+    color: #888 !important;
 }
 /* Sidebar nav buttons — base reset for all button types */
 section[data-testid="stSidebar"] button[kind="secondary"],
