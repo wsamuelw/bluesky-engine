@@ -1367,7 +1367,7 @@ if page == "FOLLOW":
     <div style="margin-bottom:20px">
         <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Follow Bot</span>
         <br>
-        <span style="font-size:13px;color:#888">Copy followers from target accounts in your niche</span>
+        <span style="font-size:13px;color:#888">Build your audience by following relevant accounts</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1419,30 +1419,14 @@ if page == "FOLLOW":
         runner = st.session_state.follow_runner
 
         # Toggle button - changes between RUN and STOP
-        col_btn, col_info = st.columns([1, 3])
-
-        with col_btn:
-            if runner.running:
-                # Bot is running - show STOP button
-                if st.button("⏹ STOP", key="stop_follow", use_container_width=True, type="primary"):
-                    runner.stop()
-                    st.rerun()
-            else:
-                # Bot is stopped - show RUN button
-                follow_run_clicked = st.button("▶ RUN FOLLOW", key="run_follow", use_container_width=True)
-
-        with col_info:
-            if runner.running:
-                status_text = "RUNNING — click STOP to halt"
-            else:
-                est_min = (daily_cap * follow_delay_min) / 60
-                est_max = (daily_cap * follow_delay_max) / 60
-                status_text = f"target {'✓' if st.session_state.target.strip() else '✗'} · ~{est_min:.0f}-{est_max:.0f} min · cap={daily_cap} · delay={follow_delay_min}-{follow_delay_max}s"
-            st.markdown(f"""
-            <div style="padding:10px 0;font-size:12px;color:#888">
-                <strong style="color:#c8c8c8">{status_text}</strong>
-            </div>
-            """, unsafe_allow_html=True)
+        if runner.running:
+            # Bot is running - show STOP button
+            if st.button("⏹ STOP", key="stop_follow", use_container_width=True, type="primary"):
+                runner.stop()
+                st.rerun()
+        else:
+            # Bot is stopped - show RUN button
+            follow_run_clicked = st.button("▶ RUN FOLLOW", key="run_follow", use_container_width=True)
 
         # Live log
         status_class = "live" if runner.running else "idle"
@@ -1634,19 +1618,6 @@ if page == "UNFOLLOW":
             else:
                 # Bot is stopped - show RUN button
                 unfollow_clicked = st.button("🚪 RUN UNFOLLOW", key="run_unfollow", use_container_width=True)
-
-        with col_info:
-            if runner.running:
-                status_text = "RUNNING — click STOP to halt"
-            else:
-                est_min = (daily_cap * unfollow_delay_min) / 60
-                est_max = (daily_cap * unfollow_delay_max) / 60
-                status_text = f"~{est_min:.0f}-{est_max:.0f} min · threshold={days_threshold}d · cap={daily_cap} · delay={unfollow_delay_min}-{unfollow_delay_max}s · {len(exemptions)} exemptions"
-            st.markdown(f"""
-            <div style="padding:10px 0;font-size:12px;color:#888">
-                <strong style="color:#c8c8c8">{status_text}</strong>
-            </div>
-            """, unsafe_allow_html=True)
 
         # Preview results
         if preview_clicked:
