@@ -4,7 +4,52 @@ Follower/following stats helpers.
 
 from atproto import Client
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from utils.tracker import load_history, get_chart_data
+
+
+def _fetch_profile(client: Client, handle: str):
+    """Fetch profile info."""
+    return client.app.bsky.actor.get_profile({"actor": handle})
+
+
+def _fetch_feed(client: Client, handle: str):
+    """Fetch recent posts for engagement stats."""
+    return client.app.bsky.feed.get_author_feed({"actor": handle, "limit": 20})
+
+
+def _fetch_all_follows(client: Client, handle: str) -> set:
+    """Fetch all follow DIDs (paginated)."""
+    following_set = set()
+    cursor = None
+    while True:
+        params = {"actor": handle, "limit": 100}
+        if cursor:
+            params["cursor"] = cursor
+        result = client.app.bsky.graph.get_follows(params)
+        for user in result.follows:
+            following_set.add(user.did)
+        cursor = result.cursor
+        if not cursor:
+            break
+    return following_set
+
+
+def _fetch_all_followers(client: Client, handle: str) -> set:
+    """Fetch all follower DIDs (paginated)."""
+    followers_set = set()
+    cursor = None
+    while True:
+        params = {"actor": handle, "limit": 100}
+        if cursor:
+            params["cursor"] = cursor
+        result = client.app.bsky.graph.get_followers(params)
+        for user in result.followers:
+            followers_set.add(user.did)
+        cursor = result.cursor
+        if not cursor:
+            break
+    return followers_set
 
 
 def get_stats(handle: str, client: Client) -> dict:
@@ -18,7 +63,27 @@ def get_stats(handle: str, client: Client) -> dict:
     Returns:
         dict with followers, following, account_age_days, posts_per_day, engagement_rate, etc.
     """
-    profile = client.app.bsky.actor.get_profile({"actor": handle})
+    # Run all 4 API tasks in parallel
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {
+            executor.submit(_fetch_profile, client, handle): "profile",
+            executor.submit(_fetch_feed, client, handle): "feed",
+            executor.submit(_fetch_all_follows, client, handle): "follows",
+            executor.submit(_fetch_all_followers, client, handle): "followers",
+        }
+
+        results = {}
+        for future in as_completed(futures):
+            key = futures[future]
+            try:
+                results[key] = future.result()
+            except Exception:
+                results[key] = None
+
+    # Extract profile data
+    profile = results.get("profile")
+    if not profile:
+        return {"error": "Failed to fetch profile"}
 
     followers = profile.followers_count or 0
     following = profile.follows_count or 0
@@ -41,9 +106,9 @@ def get_stats(handle: str, client: Client) -> dict:
     engagement_rate = 0
     avg_likes_per_post = 0
     avg_reposts_per_post = 0
-    try:
-        feed = client.app.bsky.feed.get_author_feed({"actor": handle, "limit": 20})
-        if feed.feed and followers > 0:
+    feed = results.get("feed")
+    if feed and feed.feed and followers > 0:
+        try:
             total_engagement = 0
             total_likes = 0
             total_reposts = 0
@@ -58,41 +123,15 @@ def get_stats(handle: str, client: Client) -> dict:
             engagement_rate = round((avg_engagement / followers) * 100, 2)
             avg_likes_per_post = round(total_likes / len(feed.feed), 1)
             avg_reposts_per_post = round(total_reposts / len(feed.feed), 1)
-    except:
-        pass
+        except:
+            pass
 
-    # Calculate mutual follows (people you follow who follow you back)
+    # Calculate mutual follows
     mutual_follows = 0
-    try:
-        following_set = set()
-        cursor = None
-        while True:
-            params = {"actor": handle, "limit": 100}
-            if cursor:
-                params["cursor"] = cursor
-            result = client.app.bsky.graph.get_follows(params)
-            for user in result.follows:
-                following_set.add(user.did)
-            cursor = result.cursor
-            if not cursor:
-                break
-
-        followers_set = set()
-        cursor = None
-        while True:
-            params = {"actor": handle, "limit": 100}
-            if cursor:
-                params["cursor"] = cursor
-            result = client.app.bsky.graph.get_followers(params)
-            for user in result.followers:
-                followers_set.add(user.did)
-            cursor = result.cursor
-            if not cursor:
-                break
-
+    following_set = results.get("follows")
+    followers_set = results.get("followers")
+    if following_set is not None and followers_set is not None:
         mutual_follows = len(following_set & followers_set)
-    except:
-        pass
 
     # Calculate follower growth rate (7d)
     growth_rate_7d = 0

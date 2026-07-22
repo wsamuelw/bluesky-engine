@@ -710,6 +710,29 @@ if "verification_results" not in st.session_state:
 
 
 # =============================================================
+# LOADING SCREEN (first render — session state not yet restored)
+# =============================================================
+
+if "app_initialized" not in st.session_state:
+    st.session_state.app_initialized = True
+    st.markdown("""
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh">
+        <span style="color:#00d4ff;font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-1px">bluesky-engine</span>
+        <div style="color:#888;font-size:13px;margin-top:12px;font-family:'JetBrains Mono',monospace">Loading...</div>
+        <div style="margin-top:20px;width:120px;height:3px;background:#222;border-radius:2px;overflow:hidden">
+            <div style="width:40%;height:100%;background:#00d4ff;border-radius:2px;animation:pulse 1.2s ease-in-out infinite"></div>
+        </div>
+    </div>
+    <style>
+        @keyframes pulse {
+            0% {transform:translateX(-100%)}
+            100% {transform:translateX(350%)}
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    st.rerun()
+
+# =============================================================
 # LOGIN PAGE (shown when not verified)
 # =============================================================
 
@@ -872,9 +895,41 @@ if page == "DASHBOARD":
     if not st.session_state.verified:
         st.info("Please sign in to view dashboard.")
     else:
-        # Refresh button with cache age
+        # Show branded loading screen on first dashboard load after sign-in
         import time
         now = time.time()
+        cache_age = now - st.session_state.get("stats_timestamp", 0)
+
+        # Show loading screen if stats haven't been fetched yet
+        if "cached_stats" not in st.session_state:
+            st.markdown("""
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh">
+                <span style="color:#00d4ff;font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-1px">bluesky-engine</span>
+                <div style="color:#888;font-size:13px;margin-top:12px;font-family:'JetBrains Mono',monospace">Fetching your data...</div>
+                <div style="margin-top:20px;width:120px;height:3px;background:#222;border-radius:2px;overflow:hidden">
+                    <div style="width:40%;height:100%;background:#00d4ff;border-radius:2px;animation:pulse 1.2s ease-in-out infinite"></div>
+                </div>
+            </div>
+            <style>
+                @keyframes pulse {
+                    0% {transform:translateX(-100%)}
+                    100% {transform:translateX(350%)}
+                }
+            </style>
+            """, unsafe_allow_html=True)
+
+            # Fetch stats in background
+            try:
+                client = st.session_state.client
+                stats = get_stats(st.session_state.handle, client)
+                st.session_state.cached_stats = stats
+                st.session_state.stats_timestamp = now
+                st.rerun()
+            except Exception:
+                st.error("Failed to fetch stats. Please try again.")
+                st.stop()
+
+        # Refresh button with cache age
         cache_age = now - st.session_state.get("stats_timestamp", 0)
         if cache_age < 60:
             age_label = "just now"
