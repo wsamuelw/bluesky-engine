@@ -19,11 +19,11 @@ def _fetch_feed(client: Client, handle: str):
 
 
 def _fetch_all_follows(client: Client, handle: str) -> set:
-    """Fetch all follow DIDs (paginated, limit=1000 per request)."""
+    """Fetch all follow DIDs (paginated, limit=100 per request)."""
     following_set = set()
     cursor = None
     while True:
-        params = {"actor": handle, "limit": 1000}
+        params = {"actor": handle, "limit": 100}
         if cursor:
             params["cursor"] = cursor
         result = client.app.bsky.graph.get_follows(params)
@@ -36,11 +36,11 @@ def _fetch_all_follows(client: Client, handle: str) -> set:
 
 
 def _fetch_all_followers(client: Client, handle: str) -> set:
-    """Fetch all follower DIDs (paginated, limit=1000 per request)."""
+    """Fetch all follower DIDs (paginated, limit=100 per request)."""
     followers_set = set()
     cursor = None
     while True:
-        params = {"actor": handle, "limit": 1000}
+        params = {"actor": handle, "limit": 100}
         if cursor:
             params["cursor"] = cursor
         result = client.app.bsky.graph.get_followers(params)
@@ -77,7 +77,8 @@ def get_stats(handle: str, client: Client) -> dict:
             key = futures[future]
             try:
                 results[key] = future.result()
-            except Exception:
+            except Exception as e:
+                print(f"[stats] Error fetching {key}: {e}")
                 results[key] = None
 
     # Extract profile data

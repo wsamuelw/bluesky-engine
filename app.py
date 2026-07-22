@@ -1012,13 +1012,10 @@ if page == "DASHBOARD":
 
             followers = stats["followers"]
             following = stats["following"]
-            account_age_days = stats["account_age_days"]
             posts_per_day = stats["posts_per_day"]
             engagement_rate = stats["engagement_rate"]
             mutual_follows = stats["mutual_follows"]
             avg_likes_per_post = stats["avg_likes_per_post"]
-            avg_reposts_per_post = stats["avg_reposts_per_post"]
-            growth_rate_7d = stats["growth_rate_7d"]
             non_followers = following - followers
 
             # Calculate follow-back rate
@@ -1115,19 +1112,10 @@ if page == "DASHBOARD":
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Row 3 - Secondary cards (4 columns)
-            col7, col8, col9, col10 = st.columns(4)
+            # Row 3 - Secondary cards (2 columns)
+            col7, col8 = st.columns(2)
 
             with col7:
-                st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:16px;text-align:center">
-                    <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Account Age</div>
-                    <div style="font-size:20px;font-weight:700;color:#c8c8c8">{account_age_days}</div>
-                    <div style="font-size:10px;color:#666;margin-top:4px">days</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col8:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:16px;text-align:center">
                     <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Posts/Day</div>
@@ -1135,19 +1123,11 @@ if page == "DASHBOARD":
                 </div>
                 """, unsafe_allow_html=True)
 
-            with col9:
+            with col8:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:16px;text-align:center">
                     <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Avg Likes/Post</div>
                     <div style="font-size:20px;font-weight:700;color:#c8c8c8">{avg_likes_per_post}</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col10:
-                st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:16px;text-align:center">
-                    <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Avg Reposts/Post</div>
-                    <div style="font-size:20px;font-weight:700;color:#c8c8c8">{avg_reposts_per_post}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
