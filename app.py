@@ -489,16 +489,25 @@ div[data-testid="stForm"] div[data-testid="stCaptionContainer"],
     overflow: hidden !important;
 }
 
-/* Replace password visibility icon with eye emoji */
-[data-testid="stTextInput"] button svg {
+/* Hide password visibility toggle - remove from layout */
+[data-testid="stTextInput"] button {
     display: none !important;
-}
-[data-testid="stTextInput"] button::after {
-    content: "👁️" !important;
-    font-size: 16px !important;
+    width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    position: absolute !important;
 }
 
-/* Input fields */
+/* Make all input fields same size */
+[data-testid="stTextInput"] > div > div {
+    position: relative !important;
+}
+[data-testid="stTextInput"] input {
+    width: 100% !important;
+    padding-right: 12px !important;
+}
+
+/* Input fields - consistent sizing */
 .stTextInput > div > div > input,
 .stNumberInput > div > div > input {
     background: #1a1a1a;
@@ -506,6 +515,13 @@ div[data-testid="stForm"] div[data-testid="stCaptionContainer"],
     color: #e0e0e0;
     font-family: 'JetBrains Mono', monospace;
     border-radius: 2px;
+    height: 40px !important;
+    box-sizing: border-box !important;
+}
+
+/* Force all text inputs to same width */
+.stTextInput {
+    width: 100% !important;
 }
 
 /* Select box */
