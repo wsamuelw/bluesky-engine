@@ -282,6 +282,40 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     margin-bottom: 0 !important;
 }
 
+/* Metric tooltip */
+[data-tooltip] {
+    position: relative;
+    cursor: help;
+}
+[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #222;
+    color: #c8c8c8;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+    z-index: 1000;
+    border: 1px solid #444;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+[data-tooltip]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #444;
+    margin-bottom: -5px;
+    z-index: 1000;
+}
+
 /* Topbar */
 /* Sidebar - always visible */
 [data-testid="stSidebar"] {
@@ -1077,7 +1111,9 @@ if page == "DASHBOARD":
             with col1:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
-                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Followers</div>
+                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
+                        Followers <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Total accounts following you">ⓘ</span>
+                    </div>
                     <div style="font-size:36px;font-weight:700;color:#c8c8c8">{followers:,}</div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1085,7 +1121,9 @@ if page == "DASHBOARD":
             with col2:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
-                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Engagement Rate</div>
+                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
+                        Engagement Rate <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Average engagement (likes, replies, reposts) per post as % of followers">ⓘ</span>
+                    </div>
                     <div style="font-size:36px;font-weight:700;color:{er_color}">{engagement_rate}%</div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1096,7 +1134,9 @@ if page == "DASHBOARD":
             with col3:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Following</div>
+                    <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">
+                        Following <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Total accounts you follow">ⓘ</span>
+                    </div>
                     <div style="font-size:24px;font-weight:700;color:#c8c8c8">{following:,}</div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1104,7 +1144,9 @@ if page == "DASHBOARD":
             with col4:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Non-Followers</div>
+                    <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">
+                        Non-Followers <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Accounts you follow who don't follow you back">ⓘ</span>
+                    </div>
                     <div style="font-size:24px;font-weight:700;color:#c8c8c8">{non_followers:,}</div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1112,7 +1154,9 @@ if page == "DASHBOARD":
             with col5:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Follow-back Rate</div>
+                    <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">
+                        Follow-back Rate <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="% of accounts you follow who follow you back">ⓘ</span>
+                    </div>
                     <div style="font-size:24px;font-weight:700;color:{fbr_color}">{follow_back_rate:.1f}%</div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1120,7 +1164,9 @@ if page == "DASHBOARD":
             with col6:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Mutual Follows</div>
+                    <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">
+                        Mutual Follows <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Accounts you follow who also follow you back">ⓘ</span>
+                    </div>
                     <div style="font-size:24px;font-weight:700;color:#c8c8c8">{mutual_follows:,}</div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1131,7 +1177,9 @@ if page == "DASHBOARD":
             with col7:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:16px;text-align:center">
-                    <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Posts/Day</div>
+                    <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
+                        Posts/Day <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Average posts per day since account creation">ⓘ</span>
+                    </div>
                     <div style="font-size:20px;font-weight:700;color:#c8c8c8">{posts_per_day}</div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1139,7 +1187,9 @@ if page == "DASHBOARD":
             with col8:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:16px;text-align:center">
-                    <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Avg Likes/Post</div>
+                    <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
+                        Avg Likes/Post <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Average likes per post from your last 20 posts">ⓘ</span>
+                    </div>
                     <div style="font-size:20px;font-weight:700;color:#c8c8c8">{avg_likes_per_post}</div>
                 </div>
                 """, unsafe_allow_html=True)
