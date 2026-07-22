@@ -45,10 +45,6 @@ def unfollow_bot_run(accounts, days_threshold, daily_cap, delay_min, delay_max, 
 
     enabled = [a for a in accounts if a.get("enabled", True)]
 
-    log("=" * 55)
-    log(f"STARTING UNFOLLOW BOT — {len(enabled)} ACCOUNTS")
-    log("=" * 55)
-
     results = []
 
     for acc in enabled:

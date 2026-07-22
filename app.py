@@ -170,7 +170,8 @@ def live_log_panel(runner: BotRunner):
     """Self-refreshing log panel that doesn't freeze the UI."""
     logs = runner.get_logs()
     if logs:
-        log_text = "\n".join(logs[-50:])
+        # Show newest first (descending order)
+        log_text = "\n".join(reversed(logs[-50:]))
         st.code(log_text, language="bash")
     else:
         st.code("Starting bot...", language="bash")
@@ -1214,7 +1215,7 @@ if page == "LIKE":
     <div style="margin-bottom:20px">
         <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Like Bot</span>
         <br>
-        <span style="font-size:13px;color:#888">Like posts from non-followers to trigger notifications</span>
+        <span style="font-size:13px;color:#888">Like posts from non-followers randomly to get their attention</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1247,28 +1248,15 @@ if page == "LIKE":
         # Toggle button - changes between RUN and STOP
         col_btn, col_info = st.columns([1, 3])
 
-        with col_btn:
-            if runner.running:
-                # Bot is running - show STOP button
-                if st.button("⏹ STOP", key="stop_like", use_container_width=True, type="primary"):
-                    runner.stop()
-                    st.rerun()
-            else:
-                # Bot is stopped - show RUN button
-                run_clicked = st.button("▶ RUN LIKE", key="run_like", use_container_width=True)
-
-        with col_info:
-            if runner.running:
-                status_text = "RUNNING — click STOP to halt"
-            else:
-                est_min = (batch_size * delay_min * likes_per_user) / 60
-                est_max = (batch_size * delay_max * likes_per_user) / 60
-                status_text = f"@{st.session_state.handle} · ~{est_min:.0f}-{est_max:.0f} min · batch={batch_size} · delay={delay_min}-{delay_max}s"
-            st.markdown(f"""
-            <div style="padding:10px 0;font-size:12px;color:#888">
-                <strong style="color:#c8c8c8">{status_text}</strong>
-            </div>
-            """, unsafe_allow_html=True)
+        # Toggle button - changes between RUN and STOP
+        if runner.running:
+            # Bot is running - show STOP button
+            if st.button("⏹ STOP", key="stop_like", use_container_width=True, type="primary"):
+                runner.stop()
+                st.rerun()
+        else:
+            # Bot is stopped - show RUN button
+            run_clicked = st.button("▶ RUN LIKE", key="run_like", use_container_width=True)
 
         # Live log
         status_class = "live" if runner.running else "idle"

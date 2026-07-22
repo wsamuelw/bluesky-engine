@@ -44,10 +44,6 @@ def like_bot_run(accounts, batch_size, likes_per_user, delay_min, delay_max, log
 
     enabled = [a for a in accounts if a.get("enabled", True)]
 
-    log("=" * 55)
-    log(f"STARTING {len(enabled)} ACCOUNTS")
-    log("=" * 55)
-
     results = []
 
     for acc in enabled:

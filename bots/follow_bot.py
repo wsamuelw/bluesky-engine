@@ -45,10 +45,6 @@ def follow_bot_run(accounts, pull_limit, daily_cap, delay_min, delay_max, auto_l
 
     enabled = [a for a in accounts if a.get("enabled", True)]
 
-    log("=" * 55)
-    log(f"STARTING {len(enabled)} ACCOUNTS")
-    log("=" * 55)
-
     results = []
 
     for acc in enabled:
