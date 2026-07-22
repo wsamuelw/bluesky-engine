@@ -105,34 +105,31 @@ def get_stats(handle: str, client: Client) -> dict:
 
     # Calculate engagement metrics from recent posts
     engagement_rate = 0
-    avg_likes_per_post = 0
-    avg_reposts_per_post = 0
+    reply_rate = 0
+    repost_rate = 0
+    avg_replies_per_post = 0
     feed = results.get("feed")
     if feed and feed.feed and followers > 0:
         try:
             total_engagement = 0
-            total_likes = 0
+            total_replies = 0
             total_reposts = 0
             for item in feed.feed:
                 likes = item.post.like_count or 0
                 replies = item.post.reply_count or 0
                 reposts = item.post.repost_count or 0
                 total_engagement += likes + replies + reposts
-                total_likes += likes
+                total_replies += replies
                 total_reposts += reposts
             avg_engagement = total_engagement / len(feed.feed)
             engagement_rate = round((avg_engagement / followers) * 100, 2)
-            avg_likes_per_post = round(total_likes / len(feed.feed), 1)
-            avg_reposts_per_post = round(total_reposts / len(feed.feed), 1)
+            avg_replies_per_post = round(total_replies / len(feed.feed), 1)
+            # Reply rate: replies as % of total engagement
+            if total_engagement > 0:
+                reply_rate = round((total_replies / total_engagement) * 100, 1)
+                repost_rate = round((total_reposts / total_engagement) * 100, 1)
         except:
             pass
-
-    # Calculate mutual follows
-    mutual_follows = 0
-    following_set = results.get("follows")
-    followers_set = results.get("followers")
-    if following_set is not None and followers_set is not None:
-        mutual_follows = len(following_set & followers_set)
 
     # Calculate follower growth rate (7d)
     growth_rate_7d = 0
@@ -146,15 +143,19 @@ def get_stats(handle: str, client: Client) -> dict:
     except:
         pass
 
+    # Calculate followers/following ratio
+    follow_ratio = round(followers / following, 2) if following > 0 else 0
+
     return {
         "followers": followers,
         "following": following,
         "handle": handle,
-        "account_age_days": account_age_days,
         "posts_per_day": posts_per_day,
         "engagement_rate": engagement_rate,
-        "mutual_follows": mutual_follows,
-        "avg_likes_per_post": avg_likes_per_post,
-        "avg_reposts_per_post": avg_reposts_per_post,
+        "reply_rate": reply_rate,
+        "repost_rate": repost_rate,
+        "avg_replies_per_post": avg_replies_per_post,
         "growth_rate_7d": growth_rate_7d,
+        "follow_ratio": follow_ratio,
+        "non_followers": following - followers,
     }

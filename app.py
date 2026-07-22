@@ -299,10 +299,15 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     border-radius: 4px;
     font-size: 11px;
     font-family: 'JetBrains Mono', monospace;
-    white-space: nowrap;
+    white-space: normal;
+    word-wrap: break-word;
+    max-width: 220px;
+    width: max-content;
     z-index: 1000;
     border: 1px solid #444;
     box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    text-transform: none;
+    letter-spacing: 0;
 }
 [data-tooltip]:hover::before {
     content: '';
@@ -881,6 +886,25 @@ if not st.session_state.verified:
 
             submitted = st.form_submit_button("SIGN IN", use_container_width=True, type="primary")
 
+        # Trust message (always visible)
+        st.markdown("""
+        <div style="text-align:center;margin-top:24px;font-size:10px;color:#555;font-family:'JetBrains Mono',monospace">
+            Your password is sent directly to Bluesky's servers. We never see or store it.
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Instructions (always visible)
+        st.markdown("""
+        <div style="margin-top:24px;font-size:14px;color:#888;line-height:1.8;font-family:'JetBrains Mono',monospace;display:flex;justify-content:center">
+            <div style="text-align:left">
+                <strong style="color:#c8c8c8">How to get an app password:</strong><br>
+                1. Go to <a href="https://bsky.app/settings/app-passwords" target="_blank" style="color:#00d4ff">Settings > App Passwords</a> on bsky.app<br>
+                2. Click "Add App Password" and enter a name<br>
+                3. Copy and paste the password above
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
         if submitted:
             handle = st.session_state.login_handle.strip()
             password = st.session_state.login_password.strip()
@@ -909,25 +933,6 @@ if not st.session_state.verified:
                 except Exception:
                     st.session_state["login_error"] = "Something went wrong. Please try again."
                     st.rerun()
-
-        # Trust message
-        st.markdown("""
-        <div style="text-align:center;margin-top:24px;font-size:10px;color:#555;font-family:'JetBrains Mono',monospace">
-            Your password is sent directly to Bluesky's servers. We never see or store it.
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Instructions
-        st.markdown("""
-        <div style="margin-top:24px;font-size:14px;color:#888;line-height:1.8;font-family:'JetBrains Mono',monospace;display:flex;justify-content:center">
-            <div style="text-align:left">
-                <strong style="color:#c8c8c8">How to get an app password:</strong><br>
-                1. Go to <a href="https://bsky.app/settings/app-passwords" target="_blank" style="color:#00d4ff">Settings > App Passwords</a> on bsky.app<br>
-                2. Click "Add App Password" and enter a name<br>
-                3. Copy and paste the password above
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
 
     # Stop here - don't show the main app
     st.stop()
@@ -999,7 +1004,6 @@ if page == "DASHBOARD":
         # Show branded loading screen on first dashboard load after sign-in
         import time
         now = time.time()
-        cache_age = now - st.session_state.get("stats_timestamp", 0)
 
         # Show loading screen if stats haven't been fetched yet
         if "cached_stats" not in st.session_state:
@@ -1024,65 +1028,50 @@ if page == "DASHBOARD":
                 client = st.session_state.client
                 stats = get_stats(st.session_state.handle, client)
                 st.session_state.cached_stats = stats
-                st.session_state.stats_timestamp = now
                 st.rerun()
             except Exception:
                 st.error("Failed to fetch stats. Please try again.")
                 st.stop()
 
-        # Refresh button with cache age
-        cache_age = now - st.session_state.get("stats_timestamp", 0)
-        if cache_age < 60:
-            age_label = "just now"
-        else:
-            age_label = f"{int(cache_age / 60)}m ago"
-
-        col_title, col_age, col_refresh = st.columns([2, 1, 1])
-        with col_age:
-            st.markdown(f'<div style="padding:10px 0;font-size:11px;color:#666;text-align:right">Updated {age_label}</div>', unsafe_allow_html=True)
-        with col_refresh:
-            if st.button("🔄 Refresh", key="refresh_stats", use_container_width=True):
-                st.session_state.stats_timestamp = 0  # Force refresh
-                st.rerun()
-
-        # Fetch stats for the account (cached for 5 minutes)
+        # Fetch stats for the account (cached in session state)
         try:
 
-            if "cached_stats" in st.session_state and cache_age < 300:
+            if "cached_stats" in st.session_state:
                 stats = st.session_state.cached_stats
             else:
                 with st.spinner("Fetching stats..."):
                     client = st.session_state.client
                     stats = get_stats(st.session_state.handle, client)
                 st.session_state.cached_stats = stats
-                st.session_state.stats_timestamp = now
 
             followers = stats["followers"]
             following = stats["following"]
             posts_per_day = stats["posts_per_day"]
             engagement_rate = stats["engagement_rate"]
-            mutual_follows = stats["mutual_follows"]
-            avg_likes_per_post = stats["avg_likes_per_post"]
-            non_followers = following - followers
+            reply_rate = stats["reply_rate"]
+            repost_rate = stats["repost_rate"]
+            avg_replies_per_post = stats["avg_replies_per_post"]
+            growth_rate_7d = stats["growth_rate_7d"]
+            follow_ratio = stats["follow_ratio"]
+            non_followers = stats["non_followers"]
 
             # Calculate follow-back rate
             follow_back_rate = (followers / following * 100) if following > 0 else 0
 
-            # Determine follow-back rate color
+            # Determine colors
             if follow_back_rate >= 20:
-                fbr_color = "#4ade80"  # green
+                fbr_color = "#4ade80"
             elif follow_back_rate >= 10:
-                fbr_color = "#fbbf24"  # yellow
+                fbr_color = "#fbbf24"
             else:
-                fbr_color = "#f87171"  # red
+                fbr_color = "#f87171"
 
-            # Determine engagement rate color
             if engagement_rate >= 5:
-                er_color = "#4ade80"  # green
+                er_color = "#4ade80"
             elif engagement_rate >= 2:
-                er_color = "#fbbf24"  # yellow
+                er_color = "#fbbf24"
             else:
-                er_color = "#f87171"  # red
+                er_color = "#f87171"
 
             # Save snapshot
             save_snapshot(followers, following)
@@ -1102,95 +1091,113 @@ if page == "DASHBOARD":
             if followers == 0:
                 st.info("Your account has no followers yet. Use the FOLLOW tab to start growing.")
             elif non_followers > following * 0.8 and following > 100:
-                st.warning(f"High non-follower ratio ({non_followers:,} of {following:,}). Consider running the UNFOLLOW bot to clean up.")
+                st.markdown(f"""
+                <div style="padding:10px 16px;background:#1a1500;border:1px solid #333;border-left:3px solid #ff8800;border-radius:4px;margin-bottom:16px;font-size:12px;color:#c8c8c8;font-family:'JetBrains Mono',monospace">
+                    High non-follower ratio ({non_followers:,} of {following:,}). Consider running the UNFOLLOW bot to clean up.
+                </div>
+                """, unsafe_allow_html=True)
 
-            # Dashboard cards - asymmetric grid
-            # Row 1 - Hero cards (2 columns each)
-            col1, col2 = st.columns(2)
+            # ─── SUCCESS METRICS ─────────────────────────────
+            st.markdown("""
+            <div style="margin-bottom:16px;margin-top:8px">
+                <span style="font-size:14px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-family:'JetBrains Mono',monospace;font-weight:600">Success Metrics</span>
+                <span style="font-size:14px;color:#555;margin-left:12px;font-family:'JetBrains Mono',monospace">Are we winning?</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+            col1, col2, col3, col4 = st.columns(4)
 
             with col1:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
                         Followers <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Total accounts following you">ⓘ</span>
                     </div>
-                    <div style="font-size:36px;font-weight:700;color:#c8c8c8">{followers:,}</div>
+                    <div style="font-size:40px;font-weight:700;color:#c8c8c8">{followers:,}</div>
+                    <div style="font-size:12px;color:#4ade80;margin-top:8px">+{growth_rate_7d}/day avg</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col2:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Engagement Rate <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Average engagement (likes, replies, reposts) per post as % of followers">ⓘ</span>
+                        Growth Rate <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Average new followers per day over the last 7 days">ⓘ</span>
                     </div>
-                    <div style="font-size:36px;font-weight:700;color:{er_color}">{engagement_rate}%</div>
+                    <div style="font-size:40px;font-weight:700;color:#4ade80">{growth_rate_7d}</div>
+                    <div style="font-size:12px;color:#666;margin-top:8px">followers/day</div>
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Row 2 - Standard cards (4 columns)
-            col3, col4, col5, col6 = st.columns(4)
-
             with col3:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">
-                        Following <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Total accounts you follow">ⓘ</span>
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
+                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
+                        Follow Ratio <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Followers ÷ Following. Higher = more credible account">ⓘ</span>
                     </div>
-                    <div style="font-size:24px;font-weight:700;color:#c8c8c8">{following:,}</div>
+                    <div style="font-size:40px;font-weight:700;color:#c8c8c8">{follow_ratio:.1f}x</div>
+                    <div style="font-size:12px;color:#666;margin-top:8px">followers/following</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col4:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">
-                        Non-Followers <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Accounts you follow who don't follow you back">ⓘ</span>
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
+                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
+                        Engagement <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Average engagement (likes, replies, reposts) per post as % of followers">ⓘ</span>
                     </div>
-                    <div style="font-size:24px;font-weight:700;color:#c8c8c8">{non_followers:,}</div>
+                    <div style="font-size:40px;font-weight:700;color:{er_color}">{engagement_rate}%</div>
+                    <div style="font-size:12px;color:#666;margin-top:8px">of followers</div>
                 </div>
                 """, unsafe_allow_html=True)
 
+            # ─── KEY DRIVERS ──────────────────────────────────
+            st.markdown("""
+            <div style="margin-bottom:16px;margin-top:24px">
+                <span style="font-size:14px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-family:'JetBrains Mono',monospace;font-weight:600">Key Drivers</span>
+                <span style="font-size:14px;color:#555;margin-left:12px;font-family:'JetBrains Mono',monospace">What do we change?</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+            col5, col6, col7, col8 = st.columns(4)
+
             with col5:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">
-                        Follow-back Rate <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="% of accounts you follow who follow you back">ⓘ</span>
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
+                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
+                        Posts/Day <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Average posts per day. More posts = more engagement opportunities">ⓘ</span>
                     </div>
-                    <div style="font-size:24px;font-weight:700;color:{fbr_color}">{follow_back_rate:.1f}%</div>
+                    <div style="font-size:32px;font-weight:700;color:#c8c8c8">{posts_per_day}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col6:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;text-align:center">
-                    <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">
-                        Mutual Follows <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Accounts you follow who also follow you back">ⓘ</span>
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
+                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
+                        Follow-back Rate <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="% of accounts you follow who follow you back. Optimize who you follow">ⓘ</span>
                     </div>
-                    <div style="font-size:24px;font-weight:700;color:#c8c8c8">{mutual_follows:,}</div>
+                    <div style="font-size:32px;font-weight:700;color:{fbr_color}">{follow_back_rate:.1f}%</div>
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Row 3 - Secondary cards (2 columns)
-            col7, col8 = st.columns(2)
-
             with col7:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:16px;text-align:center">
-                    <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
-                        Posts/Day <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Average posts per day since account creation">ⓘ</span>
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
+                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
+                        Reply Rate <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Replies as % of total engagement. Higher = deeper conversations">ⓘ</span>
                     </div>
-                    <div style="font-size:20px;font-weight:700;color:#c8c8c8">{posts_per_day}</div>
+                    <div style="font-size:32px;font-weight:700;color:#c8c8c8">{reply_rate}%</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col8:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:16px;text-align:center">
-                    <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
-                        Avg Likes/Post <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Average likes per post from your last 20 posts">ⓘ</span>
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
+                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
+                        Repost Rate <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Reposts as % of total engagement. Higher = content spreading">ⓘ</span>
                     </div>
-                    <div style="font-size:20px;font-weight:700;color:#c8c8c8">{avg_likes_per_post}</div>
+                    <div style="font-size:32px;font-weight:700;color:#c8c8c8">{repost_rate}%</div>
                 </div>
                 """, unsafe_allow_html=True)
 
