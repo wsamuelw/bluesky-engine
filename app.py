@@ -1619,48 +1619,35 @@ if page == "UNFOLLOW":
 
         # Run the bot (when RUN button clicked)
         if not runner.running and unfollow_clicked:
-            st.session_state.confirm_unfollow = True
-
-        # Confirmation dialog for unfollow
-        if st.session_state.get("confirm_unfollow") and not runner.running:
-            st.warning(f"⚠️ About to unfollow non-followers older than {days_threshold} days (up to {daily_cap} per run). This action is irreversible.")
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("Yes, start unfollow", key="confirm_unfollow_yes", type="primary"):
-                    st.session_state.confirm_unfollow = False
-                    # Check if another bot is running
-                    if any_bot_running():
-                        running_bot = get_running_bot_name()
-                        st.error(f"Cannot start Unfollow Bot — {running_bot} Bot is already running. Stop it first or wait for it to finish.")
-                    # Validate delays
-                    elif unfollow_delay_min > unfollow_delay_max:
-                        st.error("Min delay must be <= max delay")
-                    else:
-                        # Start bot in background thread
-                        account = [{"handle": st.session_state.handle, "client": st.session_state.get("client"), "enabled": True}]
-                        # Store settings for retry
-                        st.session_state.unfollow_settings = {
-                            "account": account,
-                            "days_threshold": days_threshold,
-                            "daily_cap": daily_cap,
-                            "delay_min": unfollow_delay_min,
-                            "delay_max": unfollow_delay_max,
-                            "exemptions": exemptions,
-                        }
-                        runner.start(
-                            unfollow_bot_run,
-                            account,
-                            days_threshold,
-                            daily_cap,
-                            unfollow_delay_min,
-                            unfollow_delay_max,
-                            exemptions,
-                        )
-                        st.rerun()
-            with col2:
-                if st.button("Cancel", key="confirm_unfollow_no"):
-                    st.session_state.confirm_unfollow = False
-                    st.rerun()
+            # Check if another bot is running
+            if any_bot_running():
+                running_bot = get_running_bot_name()
+                st.error(f"Cannot start Unfollow Bot — {running_bot} Bot is already running. Stop it first or wait for it to finish.")
+            # Validate delays
+            elif unfollow_delay_min > unfollow_delay_max:
+                st.error("Min delay must be <= max delay")
+            else:
+                # Start bot in background thread
+                account = [{"handle": st.session_state.handle, "client": st.session_state.get("client"), "enabled": True}]
+                # Store settings for retry
+                st.session_state.unfollow_settings = {
+                    "account": account,
+                    "days_threshold": days_threshold,
+                    "daily_cap": daily_cap,
+                    "delay_min": unfollow_delay_min,
+                    "delay_max": unfollow_delay_max,
+                    "exemptions": exemptions,
+                }
+                runner.start(
+                    unfollow_bot_run,
+                    account,
+                    days_threshold,
+                    daily_cap,
+                    unfollow_delay_min,
+                    unfollow_delay_max,
+                    exemptions,
+                )
+                st.rerun()
 
         # Bot is running - show logs with auto-refresh fragment
         if runner.running:
