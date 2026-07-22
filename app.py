@@ -222,29 +222,43 @@ header[data-testid="stHeader"] .stSpinner,
 }
 
 /* Override Streamlit alert widgets to match dark theme */
-.stAlert {
+div[data-testid="stAlert"],
+div.stAlert,
+.element-container div[data-baseweb="notification"] {
     background: #111 !important;
     border: 1px solid #333 !important;
     border-radius: 4px !important;
-}
-.stAlert > div {
     color: #c8c8c8 !important;
 }
+div[data-testid="stAlert"] > div,
+div.stAlert > div,
+.element-container div[data-baseweb="notification"] > div {
+    color: #c8c8c8 !important;
+    background: transparent !important;
+}
 /* Warning — subtle orange border */
-.stAlert[data-testid="stWarning"] {
+div[data-testid="stWarning"],
+div[data-baseweb="notification"][kind="warning"] {
     border-left: 3px solid #ff8800 !important;
+    background: #1a1500 !important;
 }
 /* Info — subtle blue border */
-.stAlert[data-testid="stInfo"] {
+div[data-testid="stInfo"],
+div[data-baseweb="notification"][kind="info"] {
     border-left: 3px solid #00d4ff !important;
+    background: #001a22 !important;
 }
 /* Error — subtle red border */
-.stAlert[data-testid="stError"] {
+div[data-testid="stError"],
+div[data-baseweb="notification"][kind="error"] {
     border-left: 3px solid #ff4444 !important;
+    background: #1a0000 !important;
 }
 /* Success — subtle green border */
-.stAlert[data-testid="stSuccess"] {
+div[data-testid="stSuccess"],
+div[data-baseweb="notification"][kind="success"] {
     border-left: 3px solid #00ff88 !important;
+    background: #001a0d !important;
 }
 
 /* Main content area */
