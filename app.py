@@ -868,8 +868,7 @@ with st.sidebar:
             st.session_state.active_page = nav_item
             st.rerun()
 
-    # Disconnect button
-    st.markdown("<div style='margin-top:16px;border-top:1px solid #222;padding-top:16px'></div>", unsafe_allow_html=True)
+    # Disconnect button (aligned with nav buttons)
     if st.button("DISCONNECT", key="sidebar_disconnect", use_container_width=True):
         st.session_state.confirm_disconnect_sidebar = True
 
