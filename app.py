@@ -234,6 +234,14 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     color: #c8c8c8;
 }
 
+/* Form spacing — consistent 12px between elements */
+.stForm > div > div > div {
+    margin-bottom: 12px !important;
+}
+.stForm > div > div > div:last-child {
+    margin-bottom: 0 !important;
+}
+
 /* Topbar */
 /* Sidebar - always visible */
 [data-testid="stSidebar"] {
@@ -750,9 +758,9 @@ if not st.session_state.verified:
     with col2:
         # Brand header
         st.markdown("""
-        <div style="text-align:center;margin-bottom:40px;margin-top:60px">
+        <div style="text-align:center;margin-bottom:24px;margin-top:40px">
             <span style="color:#00d4ff;font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-1px">bluesky-engine</span>
-            <div style="color:#888;font-size:13px;margin-top:8px;font-family:'JetBrains Mono',monospace">Bluesky Growth Platform</div>
+            <div style="color:#888;font-size:13px;margin-top:8px;font-family:'JetBrains Mono',monospace">Build Your Audience on Bluesky</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -817,14 +825,14 @@ if not st.session_state.verified:
 
         # Trust message
         st.markdown("""
-        <div style="text-align:center;margin-top:16px;font-size:10px;color:#555;font-family:'JetBrains Mono',monospace">
+        <div style="text-align:center;margin-top:24px;font-size:10px;color:#555;font-family:'JetBrains Mono',monospace">
             Your password is sent directly to Bluesky's servers. We never see or store it.
         </div>
         """, unsafe_allow_html=True)
 
         # Instructions
         st.markdown("""
-        <div style="margin-top:20px;font-size:14px;color:#888;line-height:1.8;font-family:'JetBrains Mono',monospace;display:flex;justify-content:center">
+        <div style="margin-top:24px;font-size:14px;color:#888;line-height:1.8;font-family:'JetBrains Mono',monospace;display:flex;justify-content:center">
             <div style="text-align:left">
                 <strong style="color:#c8c8c8">How to get an app password:</strong><br>
                 1. Go to <a href="https://bsky.app/settings/app-passwords" target="_blank" style="color:#00d4ff">Settings > App Passwords</a> on bsky.app<br>

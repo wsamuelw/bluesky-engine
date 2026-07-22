@@ -19,11 +19,11 @@ def _fetch_feed(client: Client, handle: str):
 
 
 def _fetch_all_follows(client: Client, handle: str) -> set:
-    """Fetch all follow DIDs (paginated)."""
+    """Fetch all follow DIDs (paginated, limit=1000 per request)."""
     following_set = set()
     cursor = None
     while True:
-        params = {"actor": handle, "limit": 100}
+        params = {"actor": handle, "limit": 1000}
         if cursor:
             params["cursor"] = cursor
         result = client.app.bsky.graph.get_follows(params)
@@ -36,11 +36,11 @@ def _fetch_all_follows(client: Client, handle: str) -> set:
 
 
 def _fetch_all_followers(client: Client, handle: str) -> set:
-    """Fetch all follower DIDs (paginated)."""
+    """Fetch all follower DIDs (paginated, limit=1000 per request)."""
     followers_set = set()
     cursor = None
     while True:
-        params = {"actor": handle, "limit": 100}
+        params = {"actor": handle, "limit": 1000}
         if cursor:
             params["cursor"] = cursor
         result = client.app.bsky.graph.get_followers(params)
