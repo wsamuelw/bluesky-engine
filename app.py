@@ -214,6 +214,13 @@ st.markdown("""
     color: #c8c8c8;
 }
 
+/* Hide Streamlit running indicator (top right spinner) */
+.stStatusWidget,
+header[data-testid="stHeader"] .stSpinner,
+.stSpinner {
+    display: none !important;
+}
+
 /* Main content area */
 .main .block-container {
     padding-top: 2rem;
