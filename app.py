@@ -489,6 +489,15 @@ div[data-testid="stForm"] div[data-testid="stCaptionContainer"],
     overflow: hidden !important;
 }
 
+/* Replace password visibility icon with eye emoji */
+[data-testid="stTextInput"] button svg {
+    display: none !important;
+}
+[data-testid="stTextInput"] button::after {
+    content: "👁️" !important;
+    font-size: 16px !important;
+}
+
 /* Input fields */
 .stTextInput > div > div > input,
 .stNumberInput > div > div > input {
