@@ -318,8 +318,22 @@ section[data-testid="stSidebar"] button[kind="tertiary"] {
     text-transform: uppercase !important;
     letter-spacing: 1px !important;
     padding: 6px 8px !important;
+    margin: 0 !important;
     text-align: left !important;
     justify-content: flex-start !important;
+}
+/* Remove gap between sidebar button containers */
+section[data-testid="stSidebar"] .stButton {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+}
+section[data-testid="stSidebar"] .stButton > div {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+}
+section[data-testid="stSidebar"] .element-container {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
 }
 section[data-testid="stSidebar"] button[kind="secondary"] p,
 section[data-testid="stSidebar"] button[kind="primary"] p,
@@ -329,12 +343,11 @@ section[data-testid="stSidebar"] button[kind="primary"] span,
 section[data-testid="stSidebar"] button[kind="tertiary"] span {
     font-size: 12px !important;
     text-align: left !important;
-    text-align: left !important;
     justify-content: flex-start !important;
     border-radius: 2px !important;
     transition: all 0.15s ease !important;
     width: 100% !important;
-    margin-bottom: 4px !important;
+    margin-bottom: 0 !important;
 }
 section[data-testid="stSidebar"] button[kind="secondary"]:hover,
 section[data-testid="stSidebar"] button[kind="primary"]:hover,
