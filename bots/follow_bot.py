@@ -17,7 +17,7 @@ def ts() -> str:
     return datetime.now().strftime("%H:%M:%S")
 
 
-def follow_bot_run(accounts, pull_limit, daily_cap, delay_min, delay_max, auto_like, log_callback=None, stop_check=None):
+def follow_bot_run(accounts, pull_limit, daily_cap, delay_min, delay_max, auto_like_count, log_callback=None, stop_check=None):
     """
     Run follow bot on all enabled accounts.
 
@@ -27,7 +27,7 @@ def follow_bot_run(accounts, pull_limit, daily_cap, delay_min, delay_max, auto_l
         daily_cap: max follows per account per run
         delay_min: min seconds between follows
         delay_max: max seconds between follows
-        auto_like: bool, like posts after following
+        auto_like_count: int, number of posts to like after following (0 = disabled)
         log_callback: function to call with each log line
         stop_check: function that returns True if bot should stop
 
@@ -51,7 +51,7 @@ def follow_bot_run(accounts, pull_limit, daily_cap, delay_min, delay_max, auto_l
         if should_stop():
             log("Stop requested. Halting...")
             break
-        result = _run_single_account(acc, pull_limit, daily_cap, delay_min, delay_max, auto_like, log_callback, stop_check)
+        result = _run_single_account(acc, pull_limit, daily_cap, delay_min, delay_max, auto_like_count, log_callback, stop_check)
         results.append(result)
 
     # Summary
@@ -77,7 +77,7 @@ def follow_bot_run(accounts, pull_limit, daily_cap, delay_min, delay_max, auto_l
     return results
 
 
-def _run_single_account(account, pull_limit, daily_cap, delay_min, delay_max, auto_like, log_callback=None, stop_check=None):
+def _run_single_account(account, pull_limit, daily_cap, delay_min, delay_max, auto_like_count, log_callback=None, stop_check=None):
     """
     Run follow bot for a single account.
 
@@ -184,8 +184,8 @@ def _run_single_account(account, pull_limit, daily_cap, delay_min, delay_max, au
             log(f"[{ts()}] OK   [{handle}] [{followed}/{daily_cap}] Followed @{user_handle}")
 
             # Auto-like posts after following
-            if auto_like:
-                l = _like_recent_posts(client, did, max_likes=2)
+            if auto_like_count > 0:
+                l = _like_recent_posts(client, did, max_likes=auto_like_count)
                 liked += l
                 if l > 0:
                     log(f"[{ts()}] OK   [{handle}]   -> Liked {l} posts")

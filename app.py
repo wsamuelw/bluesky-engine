@@ -969,26 +969,15 @@ with st.sidebar:
             st.session_state.active_page = nav_item
             st.rerun()
 
-    # Disconnect button (aligned with nav buttons)
-    if st.button("DISCONNECT", key="sidebar_disconnect", use_container_width=True):
-        st.session_state.confirm_disconnect_sidebar = True
-
-    if st.session_state.get("confirm_disconnect_sidebar"):
-        st.warning("Disconnect?")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Yes", key="confirm_sidebar_yes", type="primary"):
-                st.session_state.handle = ""
-                st.session_state.verified = False
-                st.session_state.client = None
-                st.session_state.profile_handle = ""
-                st.session_state.profile_followers = 0
-                st.session_state.confirm_disconnect_sidebar = False
-                st.rerun()
-        with col2:
-            if st.button("No", key="confirm_sidebar_no"):
-                st.session_state.confirm_disconnect_sidebar = False
-                st.rerun()
+    # Signout button
+    st.markdown("<div style='margin-top:16px;border-top:1px solid #222;padding-top:16px'></div>", unsafe_allow_html=True)
+    if st.button("SIGN OUT", key="sidebar_signout", use_container_width=True):
+        st.session_state.handle = ""
+        st.session_state.verified = False
+        st.session_state.client = None
+        st.session_state.profile_handle = ""
+        st.session_state.profile_followers = 0
+        st.rerun()
 
 page = st.session_state.active_page
 
@@ -1398,7 +1387,7 @@ if page == "FOLLOW":
         </div>
         """, unsafe_allow_html=True)
 
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
 
         with col1:
             pull_limit = st.number_input("PULL LIMIT", min_value=10, max_value=500, value=300, step=10,
@@ -1412,8 +1401,9 @@ if page == "FOLLOW":
         with col4:
             follow_delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=15, step=1, key="follow_delay_max",
                 help="Maximum seconds between follows. Random delay between min and max.")
-
-        auto_like = st.checkbox("Auto-like posts after following", value=True)
+        with col5:
+            auto_like_count = st.number_input("AUTO-LIKE POSTS", min_value=0, max_value=5, value=2, step=1,
+                help="Number of posts to like after following each account. 0 = disabled.")
 
         # Get runner reference
         runner = st.session_state.follow_runner
@@ -1473,7 +1463,7 @@ if page == "FOLLOW":
                         "daily_cap": daily_cap,
                         "delay_min": follow_delay_min,
                         "delay_max": follow_delay_max,
-                        "auto_like": auto_like,
+                        "auto_like_count": auto_like_count,
                     }
                     runner.start(
                         follow_bot_run,
@@ -1482,7 +1472,7 @@ if page == "FOLLOW":
                         daily_cap,
                         follow_delay_min,
                         follow_delay_max,
-                        auto_like,
+                        auto_like_count,
                     )
                     st.rerun()
 
@@ -1517,7 +1507,7 @@ if page == "FOLLOW":
                             settings["daily_cap"],
                             settings["delay_min"],
                             settings["delay_max"],
-                            settings["auto_like"],
+                            settings["auto_like_count"],
                         )
                         st.rerun()
                 else:
@@ -1552,7 +1542,7 @@ if page == "UNFOLLOW":
     <div style="margin-bottom:20px">
         <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Unfollow Bot</span>
         <br>
-        <span style="font-size:13px;color:#888">Unfollow non-followers older than X days</span>
+        <span style="font-size:13px;color:#888">Unfollow accounts that don't follow you back after X days</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1596,56 +1586,22 @@ if page == "UNFOLLOW":
             height=100,
             key="unfollow_exemptions",
             label_visibility="collapsed",
-            placeholder="karpathy.bsky.social\nbsky.app",
+            placeholder="karpathy.bsky.social\nelonmusk.bsky.social\nnaval.bsky.social",
         )
         exemptions = [e.strip() for e in exemptions_text.split("\n") if e.strip()]
 
         # Get runner reference
         runner = st.session_state.unfollow_runner
 
-        # Preview button (always available)
-        col_preview, col_run, col_info = st.columns([1, 1, 2])
-
-        with col_preview:
-            preview_clicked = st.button("👁 PREVIEW", key="preview_unfollow", use_container_width=True)
-
-        with col_run:
-            if runner.running:
-                # Bot is running - show STOP button
-                if st.button("⏹ STOP", key="stop_unfollow", use_container_width=True, type="primary"):
-                    runner.stop()
-                    st.rerun()
-            else:
-                # Bot is stopped - show RUN button
-                unfollow_clicked = st.button("🚪 RUN UNFOLLOW", key="run_unfollow", use_container_width=True)
-
-        # Preview results
-        if preview_clicked:
-            st.markdown("""
-            <div style="margin-top:20px;margin-bottom:10px">
-                <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Preview</span>
-            </div>
-            """, unsafe_allow_html=True)
-
-            # Create single account list for preview
-            account = [{"handle": st.session_state.handle, "client": st.session_state.get("client"), "enabled": True}]
-
-            with st.spinner("Fetching preview data..."):
-                preview_results = get_unfollow_preview(account, days_threshold, exemptions)
-
-            for r in preview_results:
-                if "error" in r:
-                    st.error(f"@{r['handle']}: {r['error']}")
-                else:
-                    col1, col2, col3, col4 = st.columns(4)
-                    with col1:
-                        st.metric(f"@{r['handle']}", f"{r['eligible']} eligible")
-                    with col2:
-                        st.metric("Following", f"{r['total_following']:,}")
-                    with col3:
-                        st.metric("Followers", f"{r['total_followers']:,}")
-                    with col4:
-                        st.metric("Non-followers", f"{r['non_followers']:,}")
+        # Toggle button - changes between RUN and STOP
+        if runner.running:
+            # Bot is running - show STOP button
+            if st.button("⏹ STOP", key="stop_unfollow", use_container_width=True, type="primary"):
+                runner.stop()
+                st.rerun()
+        else:
+            # Bot is stopped - show RUN button
+            unfollow_clicked = st.button("🚪 RUN UNFOLLOW", key="run_unfollow", use_container_width=True)
 
         # Live log
         status_class = "live" if runner.running else "idle"
