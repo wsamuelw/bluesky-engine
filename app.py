@@ -221,6 +221,32 @@ header[data-testid="stHeader"] .stSpinner,
     display: none !important;
 }
 
+/* Override Streamlit alert widgets to match dark theme */
+.stAlert {
+    background: #111 !important;
+    border: 1px solid #333 !important;
+    border-radius: 4px !important;
+}
+.stAlert > div {
+    color: #c8c8c8 !important;
+}
+/* Warning — subtle orange border */
+.stAlert[data-testid="stWarning"] {
+    border-left: 3px solid #ff8800 !important;
+}
+/* Info — subtle blue border */
+.stAlert[data-testid="stInfo"] {
+    border-left: 3px solid #00d4ff !important;
+}
+/* Error — subtle red border */
+.stAlert[data-testid="stError"] {
+    border-left: 3px solid #ff4444 !important;
+}
+/* Success — subtle green border */
+.stAlert[data-testid="stSuccess"] {
+    border-left: 3px solid #00ff88 !important;
+}
+
 /* Main content area */
 .main .block-container {
     padding-top: 2rem;

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard V5 — Growth Focus</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0d0d12; color: #e8e8ed; font-family: 'Space Grotesk', sans-serif; padding: 32px; }
+
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
+  .header .left h1 { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
+  .header .left .sub { font-size: 14px; color: #666; }
+  .header .right { text-align: right; }
+  .header .score { font-size: 48px; font-weight: 700; color: #00d4ff; }
+  .header .score-label { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+
+  .growth-banner { background: linear-gradient(135deg, #00d4ff15, #a855f715); border: 1px solid #00d4ff22; border-radius: 16px; padding: 24px 32px; display: flex; align-items: center; gap: 32px; margin-bottom: 32px; }
+  .growth-banner .icon { font-size: 48px; }
+  .growth-banner .content { flex: 1; }
+  .growth-banner .title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .growth-banner .desc { font-size: 13px; color: #888; }
+  .growth-banner .stats { display: flex; gap: 24px; }
+  .growth-banner .stat { text-align: center; }
+  .growth-banner .stat .val { font-size: 24px; font-weight: 700; color: #00d4ff; }
+  .growth-banner .stat .label { font-size: 11px; color: #666; }
+
+  .main-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+
+  .metric-card { background: #16161d; border: 1px solid #222230; border-radius: 16px; padding: 24px; position: relative; overflow: hidden; }
+  .metric-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .metric-card.blue::before { background: linear-gradient(90deg, #00d4ff, #00d4ff00); }
+  .metric-card.green::before { background: linear-gradient(90deg, #00ff88, #00ff8800); }
+  .metric-card.purple::before { background: linear-gradient(90deg, #a855f7, #a855f700); }
+  .metric-card .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .metric-card .label { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+  .metric-card .trend { font-size: 11px; padding: 4px 8px; border-radius: 6px; }
+  .metric-card .trend.up { background: #00ff8815; color: #00ff88; }
+  .metric-card .trend.down { background: #ff444415; color: #ff4444; }
+  .metric-card .value { font-size: 36px; font-weight: 700; margin-bottom: 8px; }
+  .metric-card .sub { font-size: 12px; color: #555; }
+  .metric-card .sparkline { position: absolute; bottom: 0; right: 0; width: 100px; height: 40px; opacity: 0.3; }
+
+  .bottom-section { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+
+  .chart-card { background: #16161d; border: 1px solid #222230; border-radius: 16px; overflow: hidden; }
+  .chart-header { padding: 20px 24px; border-bottom: 1px solid #222230; display: flex; justify-content: space-between; align-items: center; }
+  .chart-header h3 { font-size: 16px; font-weight: 600; }
+  .chart-header .period { display: flex; gap: 4px; }
+  .chart-header .period button { background: transparent; border: 1px solid #333; color: #888; padding: 6px 12px; border-radius: 6px; font-family: inherit; font-size: 11px; cursor: pointer; }
+  .chart-header .period button.active { background: #00d4ff; border-color: #00d4ff; color: #000; }
+  .chart-body { padding: 24px; }
+
+  .area-chart { height: 200px; position: relative; background: linear-gradient(to bottom, #00d4ff08, transparent); border-radius: 8px; }
+  .area-chart svg { width: 100%; height: 100%; }
+  .area-chart .line { fill: none; stroke: #00d4ff; stroke-width: 2; }
+  .area-chart .area { fill: url(#gradient); }
+  .area-chart .grid-line { stroke: #222230; stroke-width: 1; }
+  .area-chart .labels { position: absolute; bottom: -20px; left: 0; right: 0; display: flex; justify-content: space-between; }
+  .area-chart .labels span { font-size: 10px; color: #555; }
+
+  .side-card { background: #16161d; border: 1px solid #222230; border-radius: 16px; overflow: hidden; }
+  .side-header { padding: 20px 24px; border-bottom: 1px solid #222230; }
+  .side-header h3 { font-size: 16px; font-weight: 600; }
+  .side-body { padding: 24px; }
+
+  .goal-list { display: flex; flex-direction: column; gap: 20px; }
+  .goal { }
+  .goal .info { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .goal .name { font-size: 13px; }
+  .goal .count { font-size: 12px; color: #666; }
+  .goal .bar { height: 8px; background: #222230; border-radius: 4px; overflow: hidden; }
+  .goal .fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #00d4ff, #a855f7); }
+
+  .quick-actions { margin-top: 24px; padding-top: 24px; border-top: 1px solid #222230; }
+  .quick-actions h4 { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+  .action-btn { width: 100%; padding: 12px; background: #0d0d12; border: 1px solid #222230; border-radius: 8px; color: #c8c8c8; font-family: inherit; font-size: 13px; cursor: pointer; margin-bottom: 8px; text-align: left; display: flex; align-items: center; gap: 10px; }
+  .action-btn:hover { border-color: #00d4ff; background: #00d4ff08; }
+  .action-btn .icon { width: 24px; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="left">
+    <h1>Dashboard</h1>
+    <div class="sub">@alice.bsky.social · Last updated 2 min ago</div>
+  </div>
+  <div class="right">
+    <div class="score">72</div>
+    <div class="score-label">Growth Score</div>
+  </div>
+</div>
+
+<div class="growth-banner">
+  <div class="icon">🚀</div>
+  <div class="content">
+    <div class="title">Strong Growth Week</div>
+    <div class="desc">You've gained 67 followers this week. That's 23% above your weekly average.</div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="val">+67</div><div class="label">This Week</div></div>
+    <div class="stat"><div class="val">+9.6</div><div class="label">Daily Avg</div></div>
+    <div class="stat"><div class="val">+288</div><div class="label">Projected/Mo</div></div>
+  </div>
+</div>
+
+<div class="main-grid">
+  <div class="metric-card blue">
+    <div class="top">
+      <div class="label">Followers</div>
+      <div class="trend up">+12 today</div>
+    </div>
+    <div class="value">1,247</div>
+    <div class="sub">+67 this week · +1.0%</div>
+  </div>
+  <div class="metric-card green">
+    <div class="top">
+      <div class="label">Following</div>
+      <div class="trend up">+3 today</div>
+    </div>
+    <div class="value">892</div>
+    <div class="sub">+21 this week · +0.3%</div>
+  </div>
+  <div class="metric-card purple">
+    <div class="top">
+      <div class="label">Mutual Follows</div>
+    </div>
+    <div class="value">456</div>
+    <div class="sub">36.6% of followers</div>
+  </div>
+</div>
+
+<div class="bottom-section">
+  <div class="chart-card">
+    <div class="chart-header">
+      <h3>Follower Growth</h3>
+      <div class="period">
+        <button class="active">7D</button>
+        <button>30D</button>
+        <button>90D</button>
+      </div>
+    </div>
+    <div class="chart-body">
+      <div class="area-chart">
+        <svg viewBox="0 0 400 200" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="gradient" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.3"/>
+              <stop offset="100%" stop-color="#00d4ff" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <line x1="0" y1="50" x2="400" y2="50" class="grid-line"/>
+          <line x1="0" y1="100" x2="400" y2="100" class="grid-line"/>
+          <line x1="0" y1="150" x2="400" y2="150" class="grid-line"/>
+          <path d="M0,140 L57,120 L114,125 L171,100 L228,85 L285,70 L342,55 L400,40 L400,200 L0,200Z" class="area"/>
+          <path d="M0,140 L57,120 L114,125 L171,100 L228,85 L285,70 L342,55 L400,40" class="line"/>
+        </svg>
+        <div class="labels">
+          <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="side-card">
+    <div class="side-header"><h3>Monthly Goals</h3></div>
+    <div class="side-body">
+      <div class="goal-list">
+        <div class="goal">
+          <div class="info"><span class="name">Followers</span><span class="count">1,247 / 1,500</span></div>
+          <div class="bar"><div class="fill" style="width:83%"></div></div>
+        </div>
+        <div class="goal">
+          <div class="info"><span class="name">Engagement</span><span class="count">4.2% / 5.0%</span></div>
+          <div class="bar"><div class="fill" style="width:84%"></div></div>
+        </div>
+        <div class="goal">
+          <div class="info"><span class="name">Posts</span><span class="count">68 / 100</span></div>
+          <div class="bar"><div class="fill" style="width:68%"></div></div>
+        </div>
+      </div>
+
+      <div class="quick-actions">
+        <h4>Quick Actions</h4>
+        <button class="action-btn"><span class="icon">❤️</span> Start Like Bot</button>
+        <button class="action-btn"><span class="icon">👤</span> Start Follow Bot</button>
+        <button class="action-btn"><span class="icon">🚫</span> Start Unfollow Bot</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
