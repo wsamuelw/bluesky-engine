@@ -1371,18 +1371,16 @@ if page == "ENGAGE":
         # Get runner reference
         runner = st.session_state.like_runner
 
-        # Toggle button - changes between RUN and STOP
-        col_btn, col_info = st.columns([1, 3])
-
-        # Toggle button - changes between RUN and STOP
-        if runner.running:
-            # Bot is running - show STOP button
-            if st.button("⏹ STOP", key="stop_like", use_container_width=True, type="primary"):
-                runner.stop()
-                st.rerun()
-        else:
-            # Bot is stopped - show RUN button
-            run_clicked = st.button("▶ RUN LIKE", key="run_like", use_container_width=True)
+        # Action buttons — same position, changes based on state
+        col_btn, col_spacer = st.columns([1, 3])
+        with col_btn:
+            if runner.running:
+                st.button("⏳ RUNNING...", key="like_running", use_container_width=True, disabled=True)
+                if st.button("⏹ STOP", key="stop_like", use_container_width=True, type="primary"):
+                    runner.stop()
+                    st.rerun()
+            else:
+                run_clicked = st.button("▶ RUN LIKE", key="run_like", use_container_width=True)
 
         # Live log
         status_class = "live" if runner.running else "idle"
@@ -1570,15 +1568,16 @@ if page == "GROW":
         # Get runner reference
         runner = st.session_state.follow_runner
 
-        # Toggle button - changes between RUN and STOP
-        if runner.running:
-            # Bot is running - show STOP button
-            if st.button("⏹ STOP", key="stop_follow", use_container_width=True, type="primary"):
-                runner.stop()
-                st.rerun()
-        else:
-            # Bot is stopped - show RUN button
-            follow_run_clicked = st.button("▶ RUN FOLLOW", key="run_follow", use_container_width=True)
+        # Action buttons — same position, changes based on state
+        col_btn, col_spacer = st.columns([1, 3])
+        with col_btn:
+            if runner.running:
+                st.button("⏳ RUNNING...", key="follow_running", use_container_width=True, disabled=True)
+                if st.button("⏹ STOP", key="stop_follow", use_container_width=True, type="primary"):
+                    runner.stop()
+                    st.rerun()
+            else:
+                follow_run_clicked = st.button("▶ RUN FOLLOW", key="run_follow", use_container_width=True)
 
         # Live log
         status_class = "live" if runner.running else "idle"
@@ -1778,15 +1777,16 @@ if page == "CLEAN UP":
         # Get runner reference
         runner = st.session_state.unfollow_runner
 
-        # Toggle button - changes between RUN and STOP
-        if runner.running:
-            # Bot is running - show STOP button
-            if st.button("⏹ STOP", key="stop_unfollow", use_container_width=True, type="primary"):
-                runner.stop()
-                st.rerun()
-        else:
-            # Bot is stopped - show RUN button
-            unfollow_clicked = st.button("🚪 RUN UNFOLLOW", key="run_unfollow", use_container_width=True)
+        # Action buttons — same position, changes based on state
+        col_btn, col_spacer = st.columns([1, 3])
+        with col_btn:
+            if runner.running:
+                st.button("⏳ RUNNING...", key="unfollow_running", use_container_width=True, disabled=True)
+                if st.button("⏹ STOP", key="stop_unfollow", use_container_width=True, type="primary"):
+                    runner.stop()
+                    st.rerun()
+            else:
+                unfollow_clicked = st.button("🚪 RUN UNFOLLOW", key="run_unfollow", use_container_width=True)
 
         # Live log
         status_class = "live" if runner.running else "idle"
