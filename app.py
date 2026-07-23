@@ -1238,17 +1238,6 @@ if page == "DASHBOARD":
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Followers <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Total accounts following you">ⓘ</span>
-                    </div>
-                    <div style="font-size:40px;font-weight:700;color:#c8c8c8">{followers:,}</div>
-                    <div style="font-size:12px;color:#4ade80;margin-top:8px">+{growth_rate_7d}/day avg</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col2:
-                st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
-                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
                         Growth Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Average new followers per day over the last 7 days">ⓘ</span>
                     </div>
                     <div style="font-size:40px;font-weight:700;color:#4ade80">{growth_rate_7d}</div>
@@ -1256,18 +1245,18 @@ if page == "DASHBOARD":
                 </div>
                 """, unsafe_allow_html=True)
 
-            with col3:
+            with col2:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Follow Ratio <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Followers ÷ Following. Higher = more credible account">ⓘ</span>
+                        Followers <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Total accounts following you">ⓘ</span>
                     </div>
-                    <div style="font-size:40px;font-weight:700;color:#c8c8c8">{follow_ratio:.1f}x</div>
-                    <div style="font-size:12px;color:#666;margin-top:8px">followers/following</div>
+                    <div style="font-size:40px;font-weight:700;color:#c8c8c8">{followers:,}</div>
+                    <div style="font-size:12px;color:#4ade80;margin-top:8px">+{growth_rate_7d}/day avg</div>
                 </div>
                 """, unsafe_allow_html=True)
 
-            with col4:
+            with col3:
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
@@ -1275,6 +1264,17 @@ if page == "DASHBOARD":
                     </div>
                     <div style="font-size:40px;font-weight:700;color:{er_color}">{engagement_rate}%</div>
                     <div style="font-size:12px;color:#666;margin-top:8px">of followers</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col4:
+                st.markdown(f"""
+                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
+                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
+                        Follow Ratio <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Followers ÷ Following. Higher = more credible account">ⓘ</span>
+                    </div>
+                    <div style="font-size:40px;font-weight:700;color:#c8c8c8">{follow_ratio:.1f}x</div>
+                    <div style="font-size:12px;color:#666;margin-top:8px">followers/following</div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -1292,10 +1292,10 @@ if page == "DASHBOARD":
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Posts/Day <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Average posts per day. More posts = more engagement opportunities">ⓘ</span>
+                        Follow-back Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="% of accounts you follow who follow you back. Optimize who you follow">ⓘ</span>
                     </div>
-                    <div style="font-size:36px;font-weight:700;color:#c8c8c8">{posts_per_day}</div>
-                    <div style="font-size:12px;color:#666;margin-top:8px">target: 3+</div>
+                    <div style="font-size:36px;font-weight:700;color:{fbr_color}">{follow_back_rate:.1f}%</div>
+                    <div style="font-size:12px;color:#666;margin-top:8px">target: 20%+</div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -1303,10 +1303,10 @@ if page == "DASHBOARD":
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Follow-back Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="% of accounts you follow who follow you back. Optimize who you follow">ⓘ</span>
+                        Posts/Day <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Average posts per day. More posts = more engagement opportunities">ⓘ</span>
                     </div>
-                    <div style="font-size:36px;font-weight:700;color:{fbr_color}">{follow_back_rate:.1f}%</div>
-                    <div style="font-size:12px;color:#666;margin-top:8px">target: 20%+</div>
+                    <div style="font-size:36px;font-weight:700;color:#c8c8c8">{posts_per_day}</div>
+                    <div style="font-size:12px;color:#666;margin-top:8px">target: 3+</div>
                 </div>
                 """, unsafe_allow_html=True)
 
