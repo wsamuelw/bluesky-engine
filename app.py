@@ -1374,19 +1374,19 @@ if page == "LIKE":
 
         with col1:
             batch_size = st.number_input("BATCH SIZE", min_value=10, max_value=500, value=st.session_state.like_settings["batch_size"], step=10,
-                help="Number of non-followers to like per run. Start with 50 to test.")
+                help="How many people to like posts from in one run. Start with 50 to test.")
         with col2:
             likes_per_user = st.number_input("LIKES PER USER", min_value=1, max_value=5, value=st.session_state.like_settings["likes_per_user"], step=1,
-                help="How many posts to like per person. 2 is recommended.")
+                help="How many posts to like per person. 2 is the sweet spot — enough to get noticed without being spammy.")
         with col3:
             daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=1000, value=st.session_state.like_settings["daily_cap"], step=10, key="like_daily_cap",
-                help="Maximum likes per day across all runs. Helps avoid rate limits.")
+                help="Maximum likes per day across all runs. Keeps your account safe from Bluesky's rate limits.")
         with col4:
             delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=st.session_state.like_settings["delay_min"], step=1,
-                help="Minimum seconds between likes. Lower = faster but riskier.")
+                help="Minimum seconds between likes. Lower is faster, but Bluesky may temporarily block your account if too fast.")
         with col5:
             delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=st.session_state.like_settings["delay_max"], step=1,
-                help="Maximum seconds between likes. Random delay between min and max.")
+                help="Maximum seconds between likes. A random delay is picked between min and max to look natural.")
 
         # Persist settings
         st.session_state.like_settings = {
@@ -1584,19 +1584,19 @@ if page == "FOLLOW":
 
         with col1:
             pull_limit = st.number_input("PULL LIMIT", min_value=10, max_value=500, value=st.session_state.grow_settings["pull_limit"], step=10,
-                help="Max followers to pull from target account. 200 is a good start.")
+                help="How many of the target's followers to review before selecting who to follow. 200 is a good start.")
         with col2:
             daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=200, value=st.session_state.grow_settings["daily_cap"], step=5,
-                help="Max follows per account per run. Keeps you under rate limits.")
+                help="Maximum accounts to follow in one run. Keeps your account safe from Bluesky's rate limits.")
         with col3:
             follow_delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=st.session_state.grow_settings["delay_min"], step=1, key="follow_delay_min",
-                help="Minimum seconds between follows. Lower = faster but riskier.")
+                help="Minimum seconds between follows. Lower is faster, but Bluesky may temporarily block your account if too fast.")
         with col4:
             follow_delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=st.session_state.grow_settings["delay_max"], step=1, key="follow_delay_max",
-                help="Maximum seconds between follows. Random delay between min and max.")
+                help="Maximum seconds between follows. A random delay is picked between min and max to look natural.")
         with col5:
             auto_like_count = st.number_input("AUTO-LIKE POSTS", min_value=0, max_value=5, value=st.session_state.grow_settings["auto_like_count"], step=1,
-                help="Number of posts to like after following each account. 0 = disabled.")
+                help="Automatically like posts from each account you follow. Makes your follow feel genuine and increases follow-back chance. 0 = disabled.")
 
         # Persist settings
         st.session_state.grow_settings = {
@@ -1792,16 +1792,16 @@ if page == "UNFOLLOW":
 
         with col1:
             days_threshold = st.number_input("DAYS THRESHOLD", min_value=1, max_value=365, value=st.session_state.cleanup_settings["days_threshold"], step=1,
-                help="Only unfollow if followed more than X days ago. 30 is recommended.")
+                help="Wait this many days before unfollowing non-followers. Gives people time to follow back. 30 days is a safe default.")
         with col2:
             daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=300, value=st.session_state.cleanup_settings["daily_cap"], step=5,
-                key="unfollow_daily_cap", help="Max unfollows per run. Keeps you under rate limits.")
+                key="unfollow_daily_cap", help="Maximum accounts to unfollow in one run. Keeps your account safe from Bluesky's rate limits.")
         with col3:
             unfollow_delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=st.session_state.cleanup_settings["delay_min"], step=1,
-                key="unfollow_delay_min", help="Minimum seconds between unfollows.")
+                key="unfollow_delay_min", help="Minimum seconds between unfollows. Lower is faster, but Bluesky may temporarily block your account if too fast.")
         with col4:
             unfollow_delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=st.session_state.cleanup_settings["delay_max"], step=1,
-                key="unfollow_delay_max", help="Maximum seconds between unfollows.")
+                key="unfollow_delay_max", help="Maximum seconds between unfollows. A random delay is picked between min and max to look natural.")
 
         # Persist settings
         st.session_state.cleanup_settings = {
