@@ -1202,8 +1202,8 @@ if page == "DASHBOARD":
             # ─── SUCCESS METRICS ─────────────────────────────
             st.markdown("""
             <div style="margin-bottom:16px;margin-top:8px">
-                <span style="font-size:14px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-family:'JetBrains Mono',monospace;font-weight:600">Success Metrics</span>
-                <span style="font-size:14px;color:#555;margin-left:12px;font-family:'JetBrains Mono',monospace">Are we winning?</span>
+                <span style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-family:'JetBrains Mono',monospace;font-weight:600">Success Metrics</span>
+                <span style="font-size:12px;color:#555;margin-left:12px;font-family:'JetBrains Mono',monospace">Are we winning?</span>
             </div>
             """, unsafe_allow_html=True)
 
@@ -1256,8 +1256,8 @@ if page == "DASHBOARD":
             # ─── KEY DRIVERS ──────────────────────────────────
             st.markdown("""
             <div style="margin-bottom:16px;margin-top:24px">
-                <span style="font-size:14px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-family:'JetBrains Mono',monospace;font-weight:600">Key Drivers</span>
-                <span style="font-size:14px;color:#555;margin-left:12px;font-family:'JetBrains Mono',monospace">What do we change?</span>
+                <span style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-family:'JetBrains Mono',monospace;font-weight:600">Key Drivers</span>
+                <span style="font-size:12px;color:#555;margin-left:12px;font-family:'JetBrains Mono',monospace">What do we change?</span>
             </div>
             """, unsafe_allow_html=True)
 
@@ -1314,7 +1314,7 @@ if page == "DASHBOARD":
 if page == "LIKE":
     st.markdown("""
     <div style="margin-bottom:20px">
-        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Like</span>
+        <span style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-weight:600">Like</span>
         <br>
         <span style="font-size:13px;color:#888">Like posts from non-followers randomly to get their attention</span>
     </div>
@@ -1502,7 +1502,7 @@ if page == "LIKE":
 if page == "FOLLOW":
     st.markdown("""
     <div style="margin-bottom:20px">
-        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Follow</span>
+        <span style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-weight:600">Follow</span>
         <br>
         <span style="font-size:13px;color:#888">Build your audience by following relevant accounts</span>
     </div>
@@ -1727,7 +1727,7 @@ if page == "FOLLOW":
 if page == "UNFOLLOW":
     st.markdown("""
     <div style="margin-bottom:20px">
-        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Unfollow</span>
+        <span style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-weight:600">Unfollow</span>
         <br>
         <span style="font-size:13px;color:#888">Unfollow accounts that don't follow you back after X days</span>
     </div>
@@ -1937,7 +1937,7 @@ if page == "UNFOLLOW":
 if page == "EXPORT":
     st.markdown("""
     <div style="margin-bottom:20px">
-        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Export</span>
+        <span style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-weight:600">Export</span>
         <br>
         <span style="font-size:13px;color:#888">Export follower profiles for AI analysis</span>
     </div>
