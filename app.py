@@ -1479,7 +1479,20 @@ if page == "LIKE":
                 log_text = "\n".join(logs[-50:])
                 log_placeholder.code(log_text, language="bash")
             else:
-                log_placeholder.code("Waiting to start...", language="bash")
+                log_placeholder.markdown("""
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:24px;font-family:'JetBrains Mono',monospace">
+                    <div style="font-size:13px;color:#c8c8c8;margin-bottom:12px">👋 Ready to run</div>
+                    <div style="font-size:12px;color:#888;line-height:1.8">
+                        This bot likes posts from people who don't follow you yet — a low-risk way to get on their radar.<br><br>
+                        <strong style="color:#c8c8c8">Recommended first run:</strong><br>
+                        • Batch size: 50 (start small to test)<br>
+                        • Likes per user: 2<br>
+                        • Daily cap: 200<br>
+                        • Delay: 5–10 sec<br><br>
+                        <span style="color:#666">Click ▶ RUN LIKE above to start.</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
 
 # =============================================================
@@ -1691,7 +1704,20 @@ if page == "FOLLOW":
                 log_text = "\n".join(logs[-50:])
                 follow_log_placeholder.code(log_text, language="bash")
             else:
-                follow_log_placeholder.code("Waiting to start...", language="bash")
+                follow_log_placeholder.markdown("""
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:24px;font-family:'JetBrains Mono',monospace">
+                    <div style="font-size:13px;color:#c8c8c8;margin-bottom:12px">👋 Ready to run</div>
+                    <div style="font-size:12px;color:#888;line-height:1.8">
+                        This bot follows followers of a target account. Pick someone in your niche with an engaged audience.<br><br>
+                        <strong style="color:#c8c8c8">Recommended first run:</strong><br>
+                        • Target: someone with 1K–50K followers in your niche<br>
+                        • Pull limit: 100<br>
+                        • Daily cap: 50 (start conservative)<br>
+                        • Auto-like: 2 (likes posts after following)<br><br>
+                        <span style="color:#666">Set a target account above, then click ▶ RUN FOLLOW.</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
 
 # =============================================================
@@ -1888,7 +1914,20 @@ if page == "UNFOLLOW":
                 log_text = "\n".join(logs[-50:])
                 unfollow_log_placeholder.code(log_text, language="bash")
             else:
-                unfollow_log_placeholder.code("Waiting to start...", language="bash")
+                unfollow_log_placeholder.markdown("""
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:24px;font-family:'JetBrains Mono',monospace">
+                    <div style="font-size:13px;color:#c8c8c8;margin-bottom:12px">👋 Ready to run</div>
+                    <div style="font-size:12px;color:#888;line-height:1.8">
+                        This bot unfollows accounts that haven't followed you back after X days. Keeps your follow ratio healthy.<br><br>
+                        <strong style="color:#c8c8c8">Recommended first run:</strong><br>
+                        • Days threshold: 30 (give people time to follow back)<br>
+                        • Daily cap: 100<br>
+                        • Delay: 5–15 sec<br>
+                        • Add exemptions for accounts you never want to unfollow<br><br>
+                        <span style="color:#666">Click ▶ RUN UNFOLLOW above to start.</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
 
 # =============================================================
