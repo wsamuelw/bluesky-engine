@@ -240,7 +240,7 @@ def live_log_panel(runner: BotRunner):
     # Show progress counter if available
     if progress["total"] > 0:
         st.markdown(f"""
-        <div style="padding:8px 12px;background:#111;border:1px solid #222;border-radius:4px;margin-bottom:10px;font-size:12px;color:#888;font-family:'JetBrains Mono',monospace">
+        <div style="padding:8px 12px;background:#111;border:1px solid #222;border-radius:2px;margin-bottom:10px;font-size:12px;color:#888;font-family:'JetBrains Mono',monospace">
             Progress: <strong style="color:#00d4ff">{progress['completed']}</strong> / {progress['total']}
         </div>
         """, unsafe_allow_html=True)
@@ -304,7 +304,7 @@ div.stAlert,
 .element-container div[data-baseweb="notification"] {
     background: #111 !important;
     border: 1px solid #333 !important;
-    border-radius: 4px !important;
+    border-radius: 2px !important;
     color: #c8c8c8 !important;
 }
 div[data-testid="stAlert"] > div,
@@ -373,7 +373,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     background: #222;
     color: #c8c8c8;
     padding: 8px 12px;
-    border-radius: 4px;
+    border-radius: 2px;
     font-size: 11px;
     font-family: 'JetBrains Mono', monospace;
     white-space: normal;
@@ -750,7 +750,7 @@ div[data-testid="stForm"] div[data-testid="stCaptionContainer"],
     flex: 1;
     background: #00d4ff;
     min-height: 2px;
-    border-radius: 1px 1px 0 0;
+    border-radius: 2px 2px 0 0;
     opacity: 0.7;
 }
 .chart-bars .col:last-child { opacity: 1; }
@@ -937,7 +937,7 @@ if not st.session_state.verified:
         if st.session_state.get("login_error"):
             st.markdown(f"""
             <div style="padding:12px 16px;background:rgba(255,60,60,0.1);border:1px solid rgba(255,60,60,0.3);
-                        border-radius:4px;margin-bottom:16px;font-size:13px;color:#f87171;font-family:'JetBrains Mono',monospace">
+                        border-radius:2px;margin-bottom:16px;font-size:13px;color:#f87171;font-family:'JetBrains Mono',monospace">
                 {st.session_state["login_error"]}
             </div>
             """, unsafe_allow_html=True)
@@ -1194,7 +1194,7 @@ if page == "DASHBOARD":
                 st.info("Your account has no followers yet. Start with the LIKE tab to warm up accounts, then use FOLLOW to grow.")
             elif non_followers > following * 0.8 and following > 100:
                 st.markdown(f"""
-                <div style="padding:10px 16px;background:#1a1500;border:1px solid #333;border-left:3px solid #fbbf24;border-radius:4px;margin-bottom:16px;font-size:12px;color:#c8c8c8;font-family:'JetBrains Mono',monospace">
+                <div style="padding:10px 16px;background:#1a1500;border:1px solid #333;border-left:3px solid #fbbf24;border-radius:2px;margin-bottom:16px;font-size:12px;color:#c8c8c8;font-family:'JetBrains Mono',monospace">
                     High non-follower ratio ({non_followers:,} of {following:,}). Consider running the UNFOLLOW bot to clean up.
                 </div>
                 """, unsafe_allow_html=True)
@@ -1211,7 +1211,7 @@ if page == "DASHBOARD":
 
             with col1:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
+                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
                         Followers <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Total accounts following you">ⓘ</span>
                     </div>
@@ -1222,7 +1222,7 @@ if page == "DASHBOARD":
 
             with col2:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
+                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
                         Growth Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Average new followers per day over the last 7 days">ⓘ</span>
                     </div>
@@ -1233,7 +1233,7 @@ if page == "DASHBOARD":
 
             with col3:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
+                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
                         Follow Ratio <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Followers ÷ Following. Higher = more credible account">ⓘ</span>
                     </div>
@@ -1244,7 +1244,7 @@ if page == "DASHBOARD":
 
             with col4:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
+                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
                         Engagement <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Average engagement (likes, replies, reposts) per post as % of followers, based on last 20 posts">ⓘ</span>
                     </div>
@@ -1265,7 +1265,7 @@ if page == "DASHBOARD":
 
             with col5:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
+                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
                         Posts/Day <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Average posts per day. More posts = more engagement opportunities">ⓘ</span>
                     </div>
@@ -1276,7 +1276,7 @@ if page == "DASHBOARD":
 
             with col6:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
+                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
                         Follow-back Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="% of accounts you follow who follow you back. Optimize who you follow">ⓘ</span>
                     </div>
@@ -1287,7 +1287,7 @@ if page == "DASHBOARD":
 
             with col7:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
+                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
                         Reply Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Replies as % of total engagement. Higher = deeper conversations">ⓘ</span>
                     </div>
@@ -1298,7 +1298,7 @@ if page == "DASHBOARD":
 
             with col8:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
+                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
                         Repost Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Reposts as % of total engagement. Higher = content spreading">ⓘ</span>
                     </div>
@@ -1484,7 +1484,7 @@ if page == "LIKE":
                 log_placeholder.code(log_text, language="bash")
             else:
                 log_placeholder.markdown("""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:24px;font-family:'JetBrains Mono',monospace">
+                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:24px;font-family:'JetBrains Mono',monospace">
                     <div style="font-size:13px;color:#c8c8c8;margin-bottom:12px">👋 Ready to run</div>
                     <div style="font-size:12px;color:#888;line-height:1.8">
                         This bot likes posts from people who don't follow you yet — a low-risk way to get on their radar.<br><br>
@@ -1709,7 +1709,7 @@ if page == "FOLLOW":
                 follow_log_placeholder.code(log_text, language="bash")
             else:
                 follow_log_placeholder.markdown("""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:24px;font-family:'JetBrains Mono',monospace">
+                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:24px;font-family:'JetBrains Mono',monospace">
                     <div style="font-size:13px;color:#c8c8c8;margin-bottom:12px">👋 Ready to run</div>
                     <div style="font-size:12px;color:#888;line-height:1.8">
                         This bot follows followers of a target account. Pick someone in your niche with an engaged audience.<br><br>
@@ -1919,7 +1919,7 @@ if page == "UNFOLLOW":
                 unfollow_log_placeholder.code(log_text, language="bash")
             else:
                 unfollow_log_placeholder.markdown("""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:24px;font-family:'JetBrains Mono',monospace">
+                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:24px;font-family:'JetBrains Mono',monospace">
                     <div style="font-size:13px;color:#c8c8c8;margin-bottom:12px">👋 Ready to run</div>
                     <div style="font-size:12px;color:#888;line-height:1.8">
                         This bot unfollows accounts that haven't followed you back after X days. Keeps your follow ratio healthy.<br><br>
@@ -2031,7 +2031,7 @@ if page == "EXPORT":
 
                     for f in followers[:5]:
                         st.markdown(f"""
-                        <div style="background:#111;border:1px solid #222;border-radius:4px;padding:12px;margin-bottom:8px">
+                        <div style="background:#111;border:1px solid #222;border-radius:2px;padding:12px;margin-bottom:8px">
                             <div style="font-size:13px;color:#c8c8c8;font-weight:600">@{f['handle']}</div>
                             <div style="font-size:12px;color:#888;margin-top:4px">{f['display_name']}</div>
                             <div style="font-size:12px;color:#666;margin-top:4px">{f['bio'][:100]}{'...' if len(f['bio']) > 100 else ''}</div>
