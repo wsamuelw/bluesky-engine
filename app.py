@@ -156,14 +156,14 @@ class BotRunner:
 
 # Global bot runners (persists across Streamlit reruns)
 if 'like_runner' not in st.session_state:
-    st.session_state.like_runner = BotRunner("ENGAGE")
+    st.session_state.like_runner = BotRunner("LIKE")
 
 
 if 'follow_runner' not in st.session_state:
-    st.session_state.follow_runner = BotRunner("GROW")
+    st.session_state.follow_runner = BotRunner("FOLLOW")
 
 if 'unfollow_runner' not in st.session_state:
-    st.session_state.unfollow_runner = BotRunner("CLEAN UP")
+    st.session_state.unfollow_runner = BotRunner("UNFOLLOW")
 
 
 def any_bot_running():
@@ -176,11 +176,11 @@ def any_bot_running():
 def get_running_bot_name():
     """Get the name of the currently running bot."""
     if st.session_state.like_runner.running:
-        return "ENGAGE"
+        return "LIKE"
     elif st.session_state.follow_runner.running:
-        return "GROW"
+        return "FOLLOW"
     elif st.session_state.unfollow_runner.running:
-        return "CLEAN UP"
+        return "UNFOLLOW"
     return None
 
 
@@ -1036,7 +1036,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     # Navigation buttons
-    for nav_item in ["DASHBOARD", "GROW", "ENGAGE", "CLEAN UP", "AUDIENCE"]:
+    for nav_item in ["DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "EXPORT"]:
         is_active = st.session_state.active_page == nav_item
         if st.button(
             nav_item,
@@ -1191,7 +1191,7 @@ if page == "DASHBOARD":
 
             # Contextual guidance for edge cases
             if followers == 0:
-                st.info("Your account has no followers yet. Use the FOLLOW tab to start growing.")
+                st.info("Your account has no followers yet. Start with the LIKE tab to warm up accounts, then use FOLLOW to grow.")
             elif non_followers > following * 0.8 and following > 100:
                 st.markdown(f"""
                 <div style="padding:10px 16px;background:#1a1500;border:1px solid #333;border-left:3px solid #ff8800;border-radius:4px;margin-bottom:16px;font-size:12px;color:#c8c8c8;font-family:'JetBrains Mono',monospace">
@@ -1311,10 +1311,10 @@ if page == "DASHBOARD":
 # LIKE TAB
 # =============================================================
 
-if page == "ENGAGE":
+if page == "LIKE":
     st.markdown("""
     <div style="margin-bottom:20px">
-        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Engage</span>
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Like</span>
         <br>
         <span style="font-size:13px;color:#888">Like posts from non-followers randomly to get their attention</span>
     </div>
@@ -1401,7 +1401,7 @@ if page == "ENGAGE":
             # Check if another bot is running
             if any_bot_running():
                 running_bot = get_running_bot_name()
-                st.error(f"Cannot start Engage — {running_bot} is already running. Stop it first or wait for it to finish.")
+                st.error(f"Cannot start Like — {running_bot} is already running. Stop it first or wait for it to finish.")
             # Validate delays
             elif delay_min > delay_max:
                 st.error("Min delay must be <= max delay")
@@ -1486,10 +1486,10 @@ if page == "ENGAGE":
 # FOLLOW TAB (Placeholder)
 # =============================================================
 
-if page == "GROW":
+if page == "FOLLOW":
     st.markdown("""
     <div style="margin-bottom:20px">
-        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Grow</span>
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Follow</span>
         <br>
         <span style="font-size:13px;color:#888">Build your audience by following relevant accounts</span>
     </div>
@@ -1598,7 +1598,7 @@ if page == "GROW":
             # Check if another bot is running
             if any_bot_running():
                 running_bot = get_running_bot_name()
-                st.error(f"Cannot start Grow — {running_bot} is already running. Stop it first or wait for it to finish.")
+                st.error(f"Cannot start Follow — {running_bot} is already running. Stop it first or wait for it to finish.")
             # Validate delays
             elif follow_delay_min > follow_delay_max:
                 st.error("Min delay must be <= max delay")
@@ -1698,10 +1698,10 @@ if page == "GROW":
 # UNFOLLOW TAB (Placeholder)
 # =============================================================
 
-if page == "CLEAN UP":
+if page == "UNFOLLOW":
     st.markdown("""
     <div style="margin-bottom:20px">
-        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Clean Up</span>
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Unfollow</span>
         <br>
         <span style="font-size:13px;color:#888">Unfollow accounts that don't follow you back after X days</span>
     </div>
@@ -1807,7 +1807,7 @@ if page == "CLEAN UP":
             # Check if another bot is running
             if any_bot_running():
                 running_bot = get_running_bot_name()
-                st.error(f"Cannot start Clean Up — {running_bot} is already running. Stop it first or wait for it to finish.")
+                st.error(f"Cannot start Unfollow — {running_bot} is already running. Stop it first or wait for it to finish.")
             # Validate delays
             elif unfollow_delay_min > unfollow_delay_max:
                 st.error("Min delay must be <= max delay")
@@ -1892,13 +1892,13 @@ if page == "CLEAN UP":
 
 
 # =============================================================
-# AUDIENCE TAB
+# EXPORT TAB
 # =============================================================
 
-if page == "AUDIENCE":
+if page == "EXPORT":
     st.markdown("""
     <div style="margin-bottom:20px">
-        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Audience</span>
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Export</span>
         <br>
         <span style="font-size:13px;color:#888">Export follower profiles for AI analysis</span>
     </div>
