@@ -52,7 +52,8 @@ def get_bluesky_client(handle: str, password: str):
 class BotRunner:
     """Manages bot execution in a background thread with thread-safe state."""
 
-    def __init__(self):
+    def __init__(self, name):
+        self._name = name
         self._lock = threading.Lock()
         self._thread = None
         self._running = False
@@ -155,13 +156,14 @@ class BotRunner:
 
 # Global bot runners (persists across Streamlit reruns)
 if 'like_runner' not in st.session_state:
-    st.session_state.like_runner = BotRunner()
+    st.session_state.like_runner = BotRunner("ENGAGE")
+
 
 if 'follow_runner' not in st.session_state:
-    st.session_state.follow_runner = BotRunner()
+    st.session_state.follow_runner = BotRunner("GROW")
 
 if 'unfollow_runner' not in st.session_state:
-    st.session_state.unfollow_runner = BotRunner()
+    st.session_state.unfollow_runner = BotRunner("CLEAN UP")
 
 
 def any_bot_running():
@@ -1242,13 +1244,19 @@ if page == "ENGAGE":
         # Config
         # Initialize defaults in session_state
         if "like_settings" not in st.session_state:
-            st.session_state.like_settings = {
-                "batch_size": 300,
-                "likes_per_user": 2,
-                "daily_cap": 800,
-                "delay_min": 5,
-                "delay_max": 10,
-            }
+            st.session_state.like_settings = {}
+
+        # Ensure all keys exist with defaults
+        defaults = {
+            "batch_size": 300,
+            "likes_per_user": 2,
+            "daily_cap": 800,
+            "delay_min": 5,
+            "delay_max": 10,
+        }
+        for key, value in defaults.items():
+            if key not in st.session_state.like_settings:
+                st.session_state.like_settings[key] = value
 
         col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -1435,13 +1443,19 @@ if page == "GROW":
 
         # Initialize defaults in session_state
         if "grow_settings" not in st.session_state:
-            st.session_state.grow_settings = {
-                "pull_limit": 300,
-                "daily_cap": 150,
-                "delay_min": 5,
-                "delay_max": 15,
-                "auto_like_count": 2,
-            }
+            st.session_state.grow_settings = {}
+
+        # Ensure all keys exist with defaults
+        defaults = {
+            "pull_limit": 300,
+            "daily_cap": 150,
+            "delay_min": 5,
+            "delay_max": 15,
+            "auto_like_count": 2,
+        }
+        for key, value in defaults.items():
+            if key not in st.session_state.grow_settings:
+                st.session_state.grow_settings[key] = value
 
         col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -1624,12 +1638,18 @@ if page == "CLEAN UP":
 
         # Initialize defaults in session_state
         if "cleanup_settings" not in st.session_state:
-            st.session_state.cleanup_settings = {
-                "days_threshold": 30,
-                "daily_cap": 200,
-                "delay_min": 5,
-                "delay_max": 15,
-            }
+            st.session_state.cleanup_settings = {}
+
+        # Ensure all keys exist with defaults
+        defaults = {
+            "days_threshold": 30,
+            "daily_cap": 200,
+            "delay_min": 5,
+            "delay_max": 15,
+        }
+        for key, value in defaults.items():
+            if key not in st.session_state.cleanup_settings:
+                st.session_state.cleanup_settings[key] = value
 
         col1, col2, col3, col4 = st.columns(4)
 
