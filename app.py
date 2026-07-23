@@ -1134,7 +1134,7 @@ if page == "DASHBOARD":
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Engagement <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Average engagement (likes, replies, reposts) per post as % of followers">ⓘ</span>
+                        Engagement <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Average engagement (likes, replies, reposts) per post as % of followers, based on last 20 posts">ⓘ</span>
                     </div>
                     <div style="font-size:40px;font-weight:700;color:{er_color}">{engagement_rate}%</div>
                     <div style="font-size:12px;color:#666;margin-top:8px">of followers</div>
@@ -1304,7 +1304,7 @@ if page == "LIKE":
             if error:
                 error_msg = error.lower()
                 if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
-                    st.error(f"Authentication failed: {error}. Check your credentials in SETTINGS.")
+                    st.error(f"Authentication failed: {error}. Sign out and sign back in to update your credentials.")
                 elif "rate" in error_msg or "429" in error_msg:
                     st.error(f"Rate limited: {error}. Wait a few minutes and try again.")
                 elif "timeout" in error_msg or "connection" in error_msg:
@@ -1489,7 +1489,7 @@ if page == "FOLLOW":
             if error:
                 error_msg = error.lower()
                 if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
-                    st.error(f"Authentication failed: {error}. Check your credentials in SETTINGS.")
+                    st.error(f"Authentication failed: {error}. Sign out and sign back in to update your credentials.")
                 elif "rate" in error_msg or "429" in error_msg:
                     st.error(f"Rate limited: {error}. Wait a few minutes and try again.")
                 elif "timeout" in error_msg or "connection" in error_msg:
@@ -1662,7 +1662,7 @@ if page == "UNFOLLOW":
             if error:
                 error_msg = error.lower()
                 if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
-                    st.error(f"Authentication failed: {error}. Check your credentials in SETTINGS.")
+                    st.error(f"Authentication failed: {error}. Sign out and sign back in to update your credentials.")
                 elif "rate" in error_msg or "429" in error_msg:
                     st.error(f"Rate limited: {error}. Wait a few minutes and try again.")
                 elif "timeout" in error_msg or "connection" in error_msg:

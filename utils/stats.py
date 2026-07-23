@@ -157,5 +157,5 @@ def get_stats(handle: str, client: Client) -> dict:
         "avg_replies_per_post": avg_replies_per_post,
         "growth_rate_7d": growth_rate_7d,
         "follow_ratio": follow_ratio,
-        "non_followers": following - followers,
+        "non_followers": max(0, following - followers),
     }
