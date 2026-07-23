@@ -1265,41 +1265,41 @@ if page == "DASHBOARD":
 
             with col5:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
-                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
+                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
                         Posts/Day <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Average posts per day. More posts = more engagement opportunities">ⓘ</span>
                     </div>
-                    <div style="font-size:32px;font-weight:700;color:#c8c8c8">{posts_per_day}</div>
+                    <div style="font-size:36px;font-weight:700;color:#c8c8c8">{posts_per_day}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col6:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
-                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
+                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
                         Follow-back Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="% of accounts you follow who follow you back. Optimize who you follow">ⓘ</span>
                     </div>
-                    <div style="font-size:32px;font-weight:700;color:{fbr_color}">{follow_back_rate:.1f}%</div>
+                    <div style="font-size:36px;font-weight:700;color:{fbr_color}">{follow_back_rate:.1f}%</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col7:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
-                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
+                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
                         Reply Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Replies as % of total engagement. Higher = deeper conversations">ⓘ</span>
                     </div>
-                    <div style="font-size:32px;font-weight:700;color:#c8c8c8">{reply_rate}%</div>
+                    <div style="font-size:36px;font-weight:700;color:#c8c8c8">{reply_rate}%</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col8:
                 st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
-                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
+                <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
+                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
                         Repost Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Reposts as % of total engagement. Higher = content spreading">ⓘ</span>
                     </div>
-                    <div style="font-size:32px;font-weight:700;color:#c8c8c8">{repost_rate}%</div>
+                    <div style="font-size:36px;font-weight:700;color:#c8c8c8">{repost_rate}%</div>
                 </div>
                 """, unsafe_allow_html=True)
 
