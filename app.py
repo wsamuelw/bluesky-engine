@@ -987,7 +987,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     # Navigation buttons
-    for nav_item in ["DASHBOARD", "ENGAGE", "GROW", "CLEAN UP", "AUDIENCE"]:
+    for nav_item in ["DASHBOARD", "GROW", "ENGAGE", "CLEAN UP", "AUDIENCE"]:
         is_active = st.session_state.active_page == nav_item
         if st.button(
             nav_item,
