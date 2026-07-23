@@ -313,10 +313,10 @@ div.stAlert > div,
     color: #c8c8c8 !important;
     background: transparent !important;
 }
-/* Warning — subtle orange border */
+/* Warning — subtle amber border */
 div[data-testid="stWarning"],
 div[data-baseweb="notification"][kind="warning"] {
-    border-left: 3px solid #ff8800 !important;
+    border-left: 3px solid #fbbf24 !important;
     background: #1a1500 !important;
 }
 /* Info — subtle blue border */
@@ -328,13 +328,13 @@ div[data-baseweb="notification"][kind="info"] {
 /* Error — subtle red border */
 div[data-testid="stError"],
 div[data-baseweb="notification"][kind="error"] {
-    border-left: 3px solid #ff4444 !important;
+    border-left: 3px solid #f87171 !important;
     background: #1a0000 !important;
 }
 /* Success — subtle green border */
 div[data-testid="stSuccess"],
 div[data-baseweb="notification"][kind="success"] {
-    border-left: 3px solid #00ff88 !important;
+    border-left: 3px solid #4ade80 !important;
     background: #001a0d !important;
 }
 
@@ -558,8 +558,8 @@ section[data-testid="stSidebar"] button[kind="primary"] {
     font-size: 11px;
     font-weight: 600;
 }
-.ticker-item .delta.up { color: #00d4ff; }
-.ticker-item .delta.down { color: #ff4444; }
+.ticker-item .delta.up { color: #4ade80; }
+.ticker-item .delta.down { color: #f87171; }
 
 /* Panels */
 .panel {
@@ -614,8 +614,8 @@ section[data-testid="stSidebar"] button[kind="primary"] {
 .log-output .time { color: #666; }
 .log-output .ok { color: #00d4ff; }
 .log-output .info { color: #888; }
-.log-output .err { color: #ff4444; }
-.log-output .skip { color: #ffaa00; }
+.log-output .err { color: #f87171; }
+.log-output .skip { color: #fbbf24; }
 
 /* Action bar */
 .action-bar {
@@ -785,7 +785,7 @@ div[data-testid="stForm"] div[data-testid="stCaptionContainer"],
     font-family: 'JetBrains Mono', monospace;
 }
 .tag.active { background: #00d4ff22; color: #00d4ff; }
-.tag.paused { background: #ffaa0022; color: #ffaa00; }
+.tag.paused { background: #fbbf2422; color: #fbbf24; }
 .tag.idle { background: #333; color: #aaa; }
 
 /* Streamlit alerts */
@@ -844,14 +844,14 @@ footer {visibility: hidden;}
 button[key="stop_like"],
 button[key="stop_follow"],
 button[key="stop_unfollow"] {
-    background: #ff4444 !important;
-    border-color: #ff4444 !important;
+    background: #f87171 !important;
+    border-color: #f87171 !important;
 }
 button[key="stop_like"]:hover,
 button[key="stop_follow"]:hover,
 button[key="stop_unfollow"]:hover {
-    background: #ff6666 !important;
-    border-color: #ff6666 !important;
+    background: #ef4444 !important;
+    border-color: #ef4444 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -937,7 +937,7 @@ if not st.session_state.verified:
         if st.session_state.get("login_error"):
             st.markdown(f"""
             <div style="padding:12px 16px;background:rgba(255,60,60,0.1);border:1px solid rgba(255,60,60,0.3);
-                        border-radius:4px;margin-bottom:16px;font-size:13px;color:#ff6b6b;font-family:'JetBrains Mono',monospace">
+                        border-radius:4px;margin-bottom:16px;font-size:13px;color:#f87171;font-family:'JetBrains Mono',monospace">
                 {st.session_state["login_error"]}
             </div>
             """, unsafe_allow_html=True)
@@ -1052,7 +1052,7 @@ with st.sidebar:
     if any_bot_running():
         running_bot = get_running_bot_name()
         st.markdown(f"""
-        <div style="font-size:11px;color:#ff8800;font-family:'JetBrains Mono',monospace;padding:6px 8px;margin-bottom:8px">
+        <div style="font-size:11px;color:#fbbf24;font-family:'JetBrains Mono',monospace;padding:6px 8px;margin-bottom:8px">
             ⚠ {running_bot} is running — stop it first
         </div>
         """, unsafe_allow_html=True)
@@ -1194,7 +1194,7 @@ if page == "DASHBOARD":
                 st.info("Your account has no followers yet. Start with the LIKE tab to warm up accounts, then use FOLLOW to grow.")
             elif non_followers > following * 0.8 and following > 100:
                 st.markdown(f"""
-                <div style="padding:10px 16px;background:#1a1500;border:1px solid #333;border-left:3px solid #ff8800;border-radius:4px;margin-bottom:16px;font-size:12px;color:#c8c8c8;font-family:'JetBrains Mono',monospace">
+                <div style="padding:10px 16px;background:#1a1500;border:1px solid #333;border-left:3px solid #fbbf24;border-radius:4px;margin-bottom:16px;font-size:12px;color:#c8c8c8;font-family:'JetBrains Mono',monospace">
                     High non-follower ratio ({non_followers:,} of {following:,}). Consider running the UNFOLLOW bot to clean up.
                 </div>
                 """, unsafe_allow_html=True)
