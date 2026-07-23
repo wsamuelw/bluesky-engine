@@ -733,6 +733,27 @@ div[data-testid="stForm"] div[data-testid="stCaptionContainer"],
     width: 100% !important;
 }
 
+/* Focus states — keyboard accessibility */
+input:focus-visible,
+textarea:focus-visible,
+[data-testid="stTextInput"] input:focus-visible,
+[data-testid="stNumberInput"] input:focus-visible,
+[data-baseweb="input"] input:focus-visible {
+    outline: 2px solid #00d4ff !important;
+    outline-offset: -2px;
+    border-color: #00d4ff !important;
+}
+.stButton > button:focus-visible,
+.stFormSubmitButton > button:focus-visible {
+    outline: 2px solid #00d4ff !important;
+    outline-offset: 2px;
+}
+section[data-testid="stSidebar"] button:focus-visible {
+    outline: 2px solid #00d4ff !important;
+    outline-offset: -2px;
+    background: #1a1a1a !important;
+}
+
 /* Select box */
 .stSelectbox > div > div {
     background: #1a1a1a;
