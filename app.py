@@ -1049,7 +1049,15 @@ with st.sidebar:
 
     # Signout button
     st.markdown("<div style='margin-top:16px;border-top:1px solid #222;padding-top:16px'></div>", unsafe_allow_html=True)
-    if st.button("SIGN OUT", key="sidebar_signout", use_container_width=True):
+    if any_bot_running():
+        running_bot = get_running_bot_name()
+        st.markdown(f"""
+        <div style="font-size:11px;color:#ff8800;font-family:'JetBrains Mono',monospace;padding:6px 8px;margin-bottom:8px">
+            ⚠ {running_bot} is running — stop it first
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("SIGN OUT", key="sidebar_signout", use_container_width=True, disabled=True)
+    elif st.button("SIGN OUT", key="sidebar_signout", use_container_width=True):
         st.session_state.stats_refresher.stop()
         st.session_state.handle = ""
         st.session_state.verified = False
