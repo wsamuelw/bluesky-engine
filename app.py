@@ -184,6 +184,53 @@ def get_running_bot_name():
     return None
 
 
+# =============================================================
+# BACKGROUND STATS REFRESHER
+# =============================================================
+
+class StatsRefresher:
+    """Polls Bluesky in the background to keep dashboard stats fresh."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._thread = None
+        self._stop = threading.Event()
+        self._last_updated = None
+
+    @property
+    def last_updated(self):
+        with self._lock:
+            return self._last_updated
+
+    def start(self, handle, client):
+        if self._thread is not None and self._thread.is_alive():
+            return
+        self._stop.clear()
+
+        def run():
+            while not self._stop.is_set():
+                self._stop.wait(300)  # 5 minutes
+                if self._stop.is_set():
+                    break
+                try:
+                    stats = get_stats(handle, client)
+                    st.session_state.cached_stats = stats
+                    with self._lock:
+                        self._last_updated = datetime.now()
+                except Exception:
+                    pass  # silently retry next cycle
+
+        self._thread = threading.Thread(target=run, daemon=True)
+        self._thread.start()
+
+    def stop(self):
+        self._stop.set()
+
+
+if 'stats_refresher' not in st.session_state:
+    st.session_state.stats_refresher = StatsRefresher()
+
+
 @st.fragment(run_every=2)
 def live_log_panel(runner: BotRunner):
     """Self-refreshing log panel that doesn't freeze the UI."""
@@ -956,6 +1003,8 @@ if not st.session_state.verified:
                     st.session_state.client = client
                     st.session_state.profile_handle = profile.handle
                     st.session_state.profile_followers = profile.followers_count or 0
+                    # Start background stats refresher
+                    st.session_state.stats_refresher.start(handle, client)
                     st.rerun()
                 except AtProtocolError:
                     st.session_state["login_error"] = "Authentication failed. Check your handle and app password."
@@ -1001,6 +1050,7 @@ with st.sidebar:
     # Signout button
     st.markdown("<div style='margin-top:16px;border-top:1px solid #222;padding-top:16px'></div>", unsafe_allow_html=True)
     if st.button("SIGN OUT", key="sidebar_signout", use_container_width=True):
+        st.session_state.stats_refresher.stop()
         st.session_state.handle = ""
         st.session_state.verified = False
         st.session_state.client = None
@@ -1094,6 +1144,31 @@ if page == "DASHBOARD":
 
             # Save snapshot
             save_snapshot(followers, following)
+
+            # Last updated timestamp + manual refresh
+            refresher = st.session_state.stats_refresher
+            last_ts = refresher.last_updated
+            if last_ts:
+                time_str = last_ts.strftime("%I:%M %p").lstrip("0")
+            else:
+                time_str = datetime.now().strftime("%I:%M %p").lstrip("0")
+
+            col_ts, col_btn = st.columns([6, 1])
+            with col_ts:
+                st.markdown(f"""
+                <div style="font-size:11px;color:#555;font-family:'JetBrains Mono',monospace;margin-bottom:16px">
+                    Last updated: {time_str} · Auto-refreshes every 5 min
+                </div>
+                """, unsafe_allow_html=True)
+            with col_btn:
+                if st.button("⟳ Refresh", key="refresh_stats", use_container_width=True):
+                    try:
+                        stats = get_stats(st.session_state.handle, st.session_state.client)
+                        st.session_state.cached_stats = stats
+                        refresher._last_updated = datetime.now()
+                        st.rerun()
+                    except Exception:
+                        st.error("Failed to refresh.")
 
             # Request notification permission (once per session)
             if not st.session_state.get("notification_requested"):
