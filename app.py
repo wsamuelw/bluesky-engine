@@ -62,6 +62,7 @@ class BotRunner:
         self._results = None
         self._error = None
         self._progress = {"completed": 0, "total": 0}
+        self._start_time = None
 
     @property
     def running(self):
@@ -84,6 +85,7 @@ class BotRunner:
             self._results = None
             self._error = None
             self._progress = {"completed": 0, "total": 0}
+            self._start_time = time.time()
 
         def run():
             try:
@@ -138,6 +140,13 @@ class BotRunner:
         """Get bot results (thread-safe)."""
         with self._lock:
             return self._results
+
+    def get_elapsed_seconds(self):
+        """Get elapsed seconds since bot started."""
+        with self._lock:
+            if self._start_time is None:
+                return 0
+            return time.time() - self._start_time
 
     def get_error(self):
         """Get error message (thread-safe)."""
@@ -239,9 +248,25 @@ def live_log_panel(runner: BotRunner):
 
     # Show progress counter if available
     if progress["total"] > 0:
+        elapsed = runner.get_elapsed_seconds()
+        elapsed_min = int(elapsed // 60)
+        elapsed_sec = int(elapsed % 60)
+
+        # Calculate ETA
+        if progress["completed"] > 0:
+            rate = elapsed / progress["completed"]
+            remaining = rate * (progress["total"] - progress["completed"])
+            eta_min = int(remaining // 60)
+            eta_sec = int(remaining % 60)
+            eta_str = f"{eta_min}:{eta_sec:02d}"
+        else:
+            eta_str = "calculating..."
+
         st.markdown(f"""
         <div style="padding:8px 12px;background:#111;border:1px solid #222;border-radius:2px;margin-bottom:10px;font-size:12px;color:#888;font-family:'JetBrains Mono',monospace">
             Progress: <strong style="color:#00d4ff">{progress['completed']}</strong> / {progress['total']}
+            · Elapsed: {elapsed_min}:{elapsed_sec:02d}
+            · ETA: ~{eta_str}
         </div>
         """, unsafe_allow_html=True)
 
