@@ -17,7 +17,7 @@ def ts() -> str:
     return datetime.now().strftime("%H:%M:%S")
 
 
-def follow_bot_run(accounts, pull_limit, daily_cap, delay_min, delay_max, auto_like_count, log_callback=None, stop_check=None):
+def follow_bot_run(accounts, pull_limit, daily_cap, delay_min, delay_max, auto_like_count, log_callback=None, stop_check=None, progress_callback=None):
     """
     Run follow bot on all enabled accounts.
 
@@ -30,6 +30,7 @@ def follow_bot_run(accounts, pull_limit, daily_cap, delay_min, delay_max, auto_l
         auto_like_count: int, number of posts to like after following (0 = disabled)
         log_callback: function to call with each log line
         stop_check: function that returns True if bot should stop
+        progress_callback: function to call with (completed, total) for progress tracking
 
     Returns:
         list of result dicts
@@ -43,6 +44,10 @@ def follow_bot_run(accounts, pull_limit, daily_cap, delay_min, delay_max, auto_l
             return stop_check()
         return False
 
+    def update_progress(completed, total):
+        if progress_callback:
+            progress_callback(completed, total)
+
     enabled = [a for a in accounts if a.get("enabled", True)]
 
     results = []
@@ -51,7 +56,7 @@ def follow_bot_run(accounts, pull_limit, daily_cap, delay_min, delay_max, auto_l
         if should_stop():
             log("Stop requested. Halting...")
             break
-        result = _run_single_account(acc, pull_limit, daily_cap, delay_min, delay_max, auto_like_count, log_callback, stop_check)
+        result = _run_single_account(acc, pull_limit, daily_cap, delay_min, delay_max, auto_like_count, log_callback, stop_check, progress_callback)
         results.append(result)
 
     # Summary
@@ -77,7 +82,7 @@ def follow_bot_run(accounts, pull_limit, daily_cap, delay_min, delay_max, auto_l
     return results
 
 
-def _run_single_account(account, pull_limit, daily_cap, delay_min, delay_max, auto_like_count, log_callback=None, stop_check=None):
+def _run_single_account(account, pull_limit, daily_cap, delay_min, delay_max, auto_like_count, log_callback=None, stop_check=None, progress_callback=None):
     """
     Run follow bot for a single account.
 
@@ -92,6 +97,10 @@ def _run_single_account(account, pull_limit, daily_cap, delay_min, delay_max, au
         if stop_check:
             return stop_check()
         return False
+
+    def update_progress(completed, total):
+        if progress_callback:
+            progress_callback(completed, total)
 
     handle = account["handle"]
     password = account.get("password", "")
@@ -174,6 +183,9 @@ def _run_single_account(account, pull_limit, daily_cap, delay_min, delay_max, au
         if followed >= daily_cap:
             log(f"[{ts()}] WARN [{handle}] Daily cap reached ({daily_cap}). Stopping.")
             break
+
+        # Update progress
+        update_progress(i, len(target_followers))
 
         did = user["did"]
         user_handle = user["handle"]

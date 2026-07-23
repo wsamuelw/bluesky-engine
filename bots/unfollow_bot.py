@@ -17,7 +17,7 @@ def ts() -> str:
     return datetime.now().strftime("%H:%M:%S")
 
 
-def unfollow_bot_run(accounts, days_threshold, daily_cap, delay_min, delay_max, exemptions, log_callback=None, stop_check=None):
+def unfollow_bot_run(accounts, days_threshold, daily_cap, delay_min, delay_max, exemptions, log_callback=None, stop_check=None, progress_callback=None):
     """
     Run unfollow bot on all enabled accounts.
 
@@ -30,6 +30,7 @@ def unfollow_bot_run(accounts, days_threshold, daily_cap, delay_min, delay_max, 
         exemptions: list of handles to never unfollow
         log_callback: function to call with each log line
         stop_check: function that returns True if bot should stop
+        progress_callback: function to call with (completed, total) for progress tracking
 
     Returns:
         list of result dicts
@@ -43,6 +44,10 @@ def unfollow_bot_run(accounts, days_threshold, daily_cap, delay_min, delay_max, 
             return stop_check()
         return False
 
+    def update_progress(completed, total):
+        if progress_callback:
+            progress_callback(completed, total)
+
     enabled = [a for a in accounts if a.get("enabled", True)]
 
     results = []
@@ -51,7 +56,7 @@ def unfollow_bot_run(accounts, days_threshold, daily_cap, delay_min, delay_max, 
         if should_stop():
             log("Stop requested. Halting...")
             break
-        result = _run_single_account(acc, days_threshold, daily_cap, delay_min, delay_max, exemptions, log_callback, stop_check)
+        result = _run_single_account(acc, days_threshold, daily_cap, delay_min, delay_max, exemptions, log_callback, stop_check, progress_callback)
         results.append(result)
 
     # Summary
@@ -77,7 +82,7 @@ def unfollow_bot_run(accounts, days_threshold, daily_cap, delay_min, delay_max, 
     return results
 
 
-def _run_single_account(account, days_threshold, daily_cap, delay_min, delay_max, exemptions, log_callback=None, stop_check=None):
+def _run_single_account(account, days_threshold, daily_cap, delay_min, delay_max, exemptions, log_callback=None, stop_check=None, progress_callback=None):
     """
     Run unfollow bot for a single account.
 
@@ -92,6 +97,10 @@ def _run_single_account(account, days_threshold, daily_cap, delay_min, delay_max
         if stop_check:
             return stop_check()
         return False
+
+    def update_progress(completed, total):
+        if progress_callback:
+            progress_callback(completed, total)
 
     handle = account["handle"]
     password = account.get("password", "")
@@ -202,6 +211,9 @@ def _run_single_account(account, days_threshold, daily_cap, delay_min, delay_max
         if should_stop():
             log(f"[{ts()}] INFO [{handle}] Stop requested. Halting after {unfollowed} unfollows...")
             break
+
+        # Update progress
+        update_progress(i, len(to_unfollow))
 
         did = record["did"]
 

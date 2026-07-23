@@ -17,7 +17,7 @@ def ts() -> str:
     return datetime.now().strftime("%H:%M:%S")
 
 
-def like_bot_run(accounts, batch_size, likes_per_user, delay_min, delay_max, log_callback=None, stop_check=None):
+def like_bot_run(accounts, batch_size, likes_per_user, delay_min, delay_max, log_callback=None, stop_check=None, progress_callback=None):
     """
     Run like bot on all enabled accounts.
 
@@ -29,6 +29,7 @@ def like_bot_run(accounts, batch_size, likes_per_user, delay_min, delay_max, log
         delay_max: max seconds between likes
         log_callback: function to call with each log line (for live display)
         stop_check: function that returns True if bot should stop
+        progress_callback: function to call with (completed, total) for progress tracking
 
     Returns:
         list of result dicts
@@ -42,6 +43,10 @@ def like_bot_run(accounts, batch_size, likes_per_user, delay_min, delay_max, log
             return stop_check()
         return False
 
+    def update_progress(completed, total):
+        if progress_callback:
+            progress_callback(completed, total)
+
     enabled = [a for a in accounts if a.get("enabled", True)]
 
     results = []
@@ -50,7 +55,7 @@ def like_bot_run(accounts, batch_size, likes_per_user, delay_min, delay_max, log
         if should_stop():
             log("Stop requested. Halting...")
             break
-        result = _run_single_account(acc, batch_size, likes_per_user, delay_min, delay_max, log_callback, stop_check)
+        result = _run_single_account(acc, batch_size, likes_per_user, delay_min, delay_max, log_callback, stop_check, progress_callback)
         results.append(result)
 
     # Summary
@@ -76,7 +81,7 @@ def like_bot_run(accounts, batch_size, likes_per_user, delay_min, delay_max, log
     return results
 
 
-def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_max, log_callback=None, stop_check=None):
+def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_max, log_callback=None, stop_check=None, progress_callback=None):
     """
     Run like bot for a single account.
 
@@ -91,6 +96,10 @@ def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_ma
         if stop_check:
             return stop_check()
         return False
+
+    def update_progress(completed, total):
+        if progress_callback:
+            progress_callback(completed, total)
 
     handle = account["handle"]
     password = account.get("password", "")
@@ -164,6 +173,9 @@ def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_ma
         if should_stop():
             log(f"[{ts()}] INFO [{handle}] Stop requested. Halting after {liked} likes...")
             break
+
+        # Update progress
+        update_progress(i, len(sample))
 
         # Fetch handle for logging
         try:

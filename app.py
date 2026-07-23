@@ -60,6 +60,7 @@ class BotRunner:
         self._log_lines = []
         self._results = None
         self._error = None
+        self._progress = {"completed": 0, "total": 0}
 
     @property
     def running(self):
@@ -81,6 +82,7 @@ class BotRunner:
             self._log_lines = []
             self._results = None
             self._error = None
+            self._progress = {"completed": 0, "total": 0}
 
         def run():
             try:
@@ -91,6 +93,11 @@ class BotRunner:
                     with self._lock:
                         self._log_lines.append(line)
                 kwargs['log_callback'] = log_callback
+                # Create thread-safe progress callback
+                def progress_callback(completed, total):
+                    with self._lock:
+                        self._progress = {"completed": completed, "total": total}
+                kwargs['progress_callback'] = progress_callback
                 # Run the bot
                 results = bot_func(*args, **kwargs)
                 with self._lock:
@@ -115,6 +122,16 @@ class BotRunner:
         """Get current log lines (thread-safe)."""
         with self._lock:
             return self._log_lines.copy()
+
+    def get_progress(self):
+        """Get current progress (thread-safe)."""
+        with self._lock:
+            return self._progress.copy()
+
+    def update_progress(self, completed, total):
+        """Update progress (thread-safe)."""
+        with self._lock:
+            self._progress = {"completed": completed, "total": total}
 
     def get_results(self):
         """Get bot results (thread-safe)."""
@@ -157,11 +174,11 @@ def any_bot_running():
 def get_running_bot_name():
     """Get the name of the currently running bot."""
     if st.session_state.like_runner.running:
-        return "LIKE"
+        return "ENGAGE"
     elif st.session_state.follow_runner.running:
-        return "FOLLOW"
+        return "GROW"
     elif st.session_state.unfollow_runner.running:
-        return "UNFOLLOW"
+        return "CLEAN UP"
     return None
 
 
@@ -169,6 +186,16 @@ def get_running_bot_name():
 def live_log_panel(runner: BotRunner):
     """Self-refreshing log panel that doesn't freeze the UI."""
     logs = runner.get_logs()
+    progress = runner.get_progress()
+
+    # Show progress counter if available
+    if progress["total"] > 0:
+        st.markdown(f"""
+        <div style="padding:8px 12px;background:#111;border:1px solid #222;border-radius:4px;margin-bottom:10px;font-size:12px;color:#888;font-family:'JetBrains Mono',monospace">
+            Progress: <strong style="color:#00d4ff">{progress['completed']}</strong> / {progress['total']}
+        </div>
+        """, unsafe_allow_html=True)
+
     if logs:
         # Show newest first (descending order)
         log_text = "\n".join(reversed(logs[-50:]))
@@ -958,7 +985,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     # Navigation buttons
-    for nav_item in ["DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW"]:
+    for nav_item in ["DASHBOARD", "ENGAGE", "GROW", "CLEAN UP"]:
         is_active = st.session_state.active_page == nav_item
         if st.button(
             nav_item,
@@ -1101,7 +1128,7 @@ if page == "DASHBOARD":
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Followers <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Total accounts following you">ⓘ</span>
+                        Followers <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Total accounts following you">ⓘ</span>
                     </div>
                     <div style="font-size:40px;font-weight:700;color:#c8c8c8">{followers:,}</div>
                     <div style="font-size:12px;color:#4ade80;margin-top:8px">+{growth_rate_7d}/day avg</div>
@@ -1112,7 +1139,7 @@ if page == "DASHBOARD":
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Growth Rate <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Average new followers per day over the last 7 days">ⓘ</span>
+                        Growth Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Average new followers per day over the last 7 days">ⓘ</span>
                     </div>
                     <div style="font-size:40px;font-weight:700;color:#4ade80">{growth_rate_7d}</div>
                     <div style="font-size:12px;color:#666;margin-top:8px">followers/day</div>
@@ -1123,7 +1150,7 @@ if page == "DASHBOARD":
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Follow Ratio <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Followers ÷ Following. Higher = more credible account">ⓘ</span>
+                        Follow Ratio <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Followers ÷ Following. Higher = more credible account">ⓘ</span>
                     </div>
                     <div style="font-size:40px;font-weight:700;color:#c8c8c8">{follow_ratio:.1f}x</div>
                     <div style="font-size:12px;color:#666;margin-top:8px">followers/following</div>
@@ -1134,7 +1161,7 @@ if page == "DASHBOARD":
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:32px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Engagement <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Average engagement (likes, replies, reposts) per post as % of followers, based on last 20 posts">ⓘ</span>
+                        Engagement <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Average engagement (likes, replies, reposts) per post as % of followers, based on last 20 posts">ⓘ</span>
                     </div>
                     <div style="font-size:40px;font-weight:700;color:{er_color}">{engagement_rate}%</div>
                     <div style="font-size:12px;color:#666;margin-top:8px">of followers</div>
@@ -1155,7 +1182,7 @@ if page == "DASHBOARD":
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
-                        Posts/Day <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Average posts per day. More posts = more engagement opportunities">ⓘ</span>
+                        Posts/Day <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Average posts per day. More posts = more engagement opportunities">ⓘ</span>
                     </div>
                     <div style="font-size:32px;font-weight:700;color:#c8c8c8">{posts_per_day}</div>
                 </div>
@@ -1165,7 +1192,7 @@ if page == "DASHBOARD":
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
-                        Follow-back Rate <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="% of accounts you follow who follow you back. Optimize who you follow">ⓘ</span>
+                        Follow-back Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="% of accounts you follow who follow you back. Optimize who you follow">ⓘ</span>
                     </div>
                     <div style="font-size:32px;font-weight:700;color:{fbr_color}">{follow_back_rate:.1f}%</div>
                 </div>
@@ -1175,7 +1202,7 @@ if page == "DASHBOARD":
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
-                        Reply Rate <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Replies as % of total engagement. Higher = deeper conversations">ⓘ</span>
+                        Reply Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Replies as % of total engagement. Higher = deeper conversations">ⓘ</span>
                     </div>
                     <div style="font-size:32px;font-weight:700;color:#c8c8c8">{reply_rate}%</div>
                 </div>
@@ -1185,7 +1212,7 @@ if page == "DASHBOARD":
                 st.markdown(f"""
                 <div style="background:#111;border:1px solid #222;border-radius:4px;padding:28px;text-align:center">
                     <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
-                        Repost Rate <span style="cursor:help;color:#666;font-size:10px;vertical-align:super" data-tooltip="Reposts as % of total engagement. Higher = content spreading">ⓘ</span>
+                        Repost Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Reposts as % of total engagement. Higher = content spreading">ⓘ</span>
                     </div>
                     <div style="font-size:32px;font-weight:700;color:#c8c8c8">{repost_rate}%</div>
                 </div>
@@ -1199,10 +1226,10 @@ if page == "DASHBOARD":
 # LIKE TAB
 # =============================================================
 
-if page == "LIKE":
+if page == "ENGAGE":
     st.markdown("""
     <div style="margin-bottom:20px">
-        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Like Bot</span>
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Engage</span>
         <br>
         <span style="font-size:13px;color:#888">Like posts from non-followers randomly to get their attention</span>
     </div>
@@ -1213,23 +1240,42 @@ if page == "LIKE":
         st.warning("Please sign in first.")
     else:
         # Config
+        # Initialize defaults in session_state
+        if "like_settings" not in st.session_state:
+            st.session_state.like_settings = {
+                "batch_size": 300,
+                "likes_per_user": 2,
+                "daily_cap": 800,
+                "delay_min": 5,
+                "delay_max": 10,
+            }
+
         col1, col2, col3, col4, col5 = st.columns(5)
 
         with col1:
-            batch_size = st.number_input("BATCH SIZE", min_value=10, max_value=500, value=300, step=10,
+            batch_size = st.number_input("BATCH SIZE", min_value=10, max_value=500, value=st.session_state.like_settings["batch_size"], step=10,
                 help="Number of non-followers to like per run. Start with 50 to test.")
         with col2:
-            likes_per_user = st.number_input("LIKES PER USER", min_value=1, max_value=5, value=2, step=1,
+            likes_per_user = st.number_input("LIKES PER USER", min_value=1, max_value=5, value=st.session_state.like_settings["likes_per_user"], step=1,
                 help="How many posts to like per person. 2 is recommended.")
         with col3:
-            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=1000, value=800, step=10, key="like_daily_cap",
+            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=1000, value=st.session_state.like_settings["daily_cap"], step=10, key="like_daily_cap",
                 help="Maximum likes per day across all runs. Helps avoid rate limits.")
         with col4:
-            delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=5, step=1,
+            delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=st.session_state.like_settings["delay_min"], step=1,
                 help="Minimum seconds between likes. Lower = faster but riskier.")
         with col5:
-            delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=10, step=1,
+            delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=st.session_state.like_settings["delay_max"], step=1,
                 help="Maximum seconds between likes. Random delay between min and max.")
+
+        # Persist settings
+        st.session_state.like_settings = {
+            "batch_size": batch_size,
+            "likes_per_user": likes_per_user,
+            "daily_cap": daily_cap,
+            "delay_min": delay_min,
+            "delay_max": delay_max,
+        }
 
         # Get runner reference
         runner = st.session_state.like_runner
@@ -1266,7 +1312,7 @@ if page == "LIKE":
             # Check if another bot is running
             if any_bot_running():
                 running_bot = get_running_bot_name()
-                st.error(f"Cannot start Like Bot — {running_bot} Bot is already running. Stop it first or wait for it to finish.")
+                st.error(f"Cannot start Engage — {running_bot} is already running. Stop it first or wait for it to finish.")
             # Validate delays
             elif delay_min > delay_max:
                 st.error("Min delay must be <= max delay")
@@ -1351,10 +1397,10 @@ if page == "LIKE":
 # FOLLOW TAB (Placeholder)
 # =============================================================
 
-if page == "FOLLOW":
+if page == "GROW":
     st.markdown("""
     <div style="margin-bottom:20px">
-        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Follow Bot</span>
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Grow</span>
         <br>
         <span style="font-size:13px;color:#888">Build your audience by following relevant accounts</span>
     </div>
@@ -1387,23 +1433,42 @@ if page == "FOLLOW":
         </div>
         """, unsafe_allow_html=True)
 
+        # Initialize defaults in session_state
+        if "grow_settings" not in st.session_state:
+            st.session_state.grow_settings = {
+                "pull_limit": 300,
+                "daily_cap": 150,
+                "delay_min": 5,
+                "delay_max": 15,
+                "auto_like_count": 2,
+            }
+
         col1, col2, col3, col4, col5 = st.columns(5)
 
         with col1:
-            pull_limit = st.number_input("PULL LIMIT", min_value=10, max_value=500, value=300, step=10,
+            pull_limit = st.number_input("PULL LIMIT", min_value=10, max_value=500, value=st.session_state.grow_settings["pull_limit"], step=10,
                 help="Max followers to pull from target account. 200 is a good start.")
         with col2:
-            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=200, value=150, step=5,
+            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=200, value=st.session_state.grow_settings["daily_cap"], step=5,
                 help="Max follows per account per run. Keeps you under rate limits.")
         with col3:
-            follow_delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=5, step=1, key="follow_delay_min",
+            follow_delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=st.session_state.grow_settings["delay_min"], step=1, key="follow_delay_min",
                 help="Minimum seconds between follows. Lower = faster but riskier.")
         with col4:
-            follow_delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=15, step=1, key="follow_delay_max",
+            follow_delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=st.session_state.grow_settings["delay_max"], step=1, key="follow_delay_max",
                 help="Maximum seconds between follows. Random delay between min and max.")
         with col5:
-            auto_like_count = st.number_input("AUTO-LIKE POSTS", min_value=0, max_value=5, value=2, step=1,
+            auto_like_count = st.number_input("AUTO-LIKE POSTS", min_value=0, max_value=5, value=st.session_state.grow_settings["auto_like_count"], step=1,
                 help="Number of posts to like after following each account. 0 = disabled.")
+
+        # Persist settings
+        st.session_state.grow_settings = {
+            "pull_limit": pull_limit,
+            "daily_cap": daily_cap,
+            "delay_min": follow_delay_min,
+            "delay_max": follow_delay_max,
+            "auto_like_count": auto_like_count,
+        }
 
         # Get runner reference
         runner = st.session_state.follow_runner
@@ -1437,7 +1502,7 @@ if page == "FOLLOW":
             # Check if another bot is running
             if any_bot_running():
                 running_bot = get_running_bot_name()
-                st.error(f"Cannot start Follow Bot — {running_bot} Bot is already running. Stop it first or wait for it to finish.")
+                st.error(f"Cannot start Grow — {running_bot} is already running. Stop it first or wait for it to finish.")
             # Validate delays
             elif follow_delay_min > follow_delay_max:
                 st.error("Min delay must be <= max delay")
@@ -1537,10 +1602,10 @@ if page == "FOLLOW":
 # UNFOLLOW TAB (Placeholder)
 # =============================================================
 
-if page == "UNFOLLOW":
+if page == "CLEAN UP":
     st.markdown("""
     <div style="margin-bottom:20px">
-        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Unfollow Bot</span>
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Clean Up</span>
         <br>
         <span style="font-size:13px;color:#888">Unfollow accounts that don't follow you back after X days</span>
     </div>
@@ -1557,20 +1622,37 @@ if page == "UNFOLLOW":
         </div>
         """, unsafe_allow_html=True)
 
+        # Initialize defaults in session_state
+        if "cleanup_settings" not in st.session_state:
+            st.session_state.cleanup_settings = {
+                "days_threshold": 30,
+                "daily_cap": 200,
+                "delay_min": 5,
+                "delay_max": 15,
+            }
+
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
-            days_threshold = st.number_input("DAYS THRESHOLD", min_value=1, max_value=365, value=30, step=1,
+            days_threshold = st.number_input("DAYS THRESHOLD", min_value=1, max_value=365, value=st.session_state.cleanup_settings["days_threshold"], step=1,
                 help="Only unfollow if followed more than X days ago. 30 is recommended.")
         with col2:
-            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=300, value=200, step=5,
+            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=300, value=st.session_state.cleanup_settings["daily_cap"], step=5,
                 key="unfollow_daily_cap", help="Max unfollows per run. Keeps you under rate limits.")
         with col3:
-            unfollow_delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=5, step=1,
+            unfollow_delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=st.session_state.cleanup_settings["delay_min"], step=1,
                 key="unfollow_delay_min", help="Minimum seconds between unfollows.")
         with col4:
-            unfollow_delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=15, step=1,
+            unfollow_delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=st.session_state.cleanup_settings["delay_max"], step=1,
                 key="unfollow_delay_max", help="Maximum seconds between unfollows.")
+
+        # Persist settings
+        st.session_state.cleanup_settings = {
+            "days_threshold": days_threshold,
+            "daily_cap": daily_cap,
+            "delay_min": unfollow_delay_min,
+            "delay_max": unfollow_delay_max,
+        }
 
         # Exemptions
         st.markdown("""
@@ -1622,7 +1704,7 @@ if page == "UNFOLLOW":
             # Check if another bot is running
             if any_bot_running():
                 running_bot = get_running_bot_name()
-                st.error(f"Cannot start Unfollow Bot — {running_bot} Bot is already running. Stop it first or wait for it to finish.")
+                st.error(f"Cannot start Clean Up — {running_bot} is already running. Stop it first or wait for it to finish.")
             # Validate delays
             elif unfollow_delay_min > unfollow_delay_max:
                 st.error("Min delay must be <= max delay")
