@@ -1201,7 +1201,7 @@ if page == "DASHBOARD":
 
             # ─── SUCCESS METRICS ─────────────────────────────
             st.markdown("""
-            <div style="margin-bottom:16px;margin-top:8px">
+            <div style="margin-bottom:16px;margin-top:16px">
                 <span style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-family:'JetBrains Mono',monospace;font-weight:600">Success Metrics</span>
                 <span style="font-size:12px;color:#555;margin-left:12px;font-family:'JetBrains Mono',monospace">Are we winning?</span>
             </div>
@@ -1255,7 +1255,7 @@ if page == "DASHBOARD":
 
             # ─── KEY DRIVERS ──────────────────────────────────
             st.markdown("""
-            <div style="margin-bottom:16px;margin-top:24px">
+            <div style="margin-bottom:16px;margin-top:16px">
                 <span style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-family:'JetBrains Mono',monospace;font-weight:600">Key Drivers</span>
                 <span style="font-size:12px;color:#555;margin-left:12px;font-family:'JetBrains Mono',monospace">What do we change?</span>
             </div>
