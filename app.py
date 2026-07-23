@@ -1270,6 +1270,7 @@ if page == "DASHBOARD":
                         Posts/Day <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Average posts per day. More posts = more engagement opportunities">ⓘ</span>
                     </div>
                     <div style="font-size:36px;font-weight:700;color:#c8c8c8">{posts_per_day}</div>
+                    <div style="font-size:12px;color:#666;margin-top:8px">target: 3+</div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -1280,6 +1281,7 @@ if page == "DASHBOARD":
                         Follow-back Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="% of accounts you follow who follow you back. Optimize who you follow">ⓘ</span>
                     </div>
                     <div style="font-size:36px;font-weight:700;color:{fbr_color}">{follow_back_rate:.1f}%</div>
+                    <div style="font-size:12px;color:#666;margin-top:8px">target: 20%+</div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -1290,6 +1292,7 @@ if page == "DASHBOARD":
                         Reply Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Replies as % of total engagement. Higher = deeper conversations">ⓘ</span>
                     </div>
                     <div style="font-size:36px;font-weight:700;color:#c8c8c8">{reply_rate}%</div>
+                    <div style="font-size:12px;color:#666;margin-top:8px">target: 5%+</div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -1300,6 +1303,7 @@ if page == "DASHBOARD":
                         Repost Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Reposts as % of total engagement. Higher = content spreading">ⓘ</span>
                     </div>
                     <div style="font-size:36px;font-weight:700;color:#c8c8c8">{repost_rate}%</div>
+                    <div style="font-size:12px;color:#666;margin-top:8px">target: 2%+</div>
                 </div>
                 """, unsafe_allow_html=True)
 
