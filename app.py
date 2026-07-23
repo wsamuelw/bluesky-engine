@@ -834,20 +834,6 @@ section[data-testid="stSidebar"] button:focus-visible {
 .tag.paused { background: #fbbf2422; color: #fbbf24; }
 .tag.idle { background: #333; color: #aaa; }
 
-/* Streamlit alerts */
-.stAlert {
-    background: #111;
-    border: 1px solid #222;
-    border-radius: 2px;
-    font-family: 'JetBrains Mono', monospace;
-}
-.stAlert > div {
-    color: #c8c8c8;
-}
-.stAlert [data-testid="stMarkdownContainer"] p {
-    color: #c8c8c8;
-}
-
 /* Hide Streamlit elements */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
@@ -882,9 +868,6 @@ footer {visibility: hidden;}
 .stRadio > div > label[data-checked="true"] {
     color: #00d4ff;
     background: #1a1a1a;
-}
-.stTabs [data-baseweb="tab-highlight"] {
-    background: #00d4ff;
 }
 /* Stop button - red when running */
 button[key="stop_like"],
