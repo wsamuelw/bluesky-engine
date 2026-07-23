@@ -987,7 +987,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     # Navigation buttons
-    for nav_item in ["DASHBOARD", "ENGAGE", "GROW", "CLEAN UP"]:
+    for nav_item in ["DASHBOARD", "ENGAGE", "GROW", "CLEAN UP", "AUDIENCE"]:
         is_active = st.session_state.active_page == nav_item
         if st.button(
             nav_item,
@@ -1806,3 +1806,111 @@ if page == "CLEAN UP":
                 unfollow_log_placeholder.code(log_text, language="bash")
             else:
                 unfollow_log_placeholder.code("Waiting to start...", language="bash")
+
+
+# =============================================================
+# AUDIENCE TAB
+# =============================================================
+
+if page == "AUDIENCE":
+    st.markdown("""
+    <div style="margin-bottom:20px">
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Audience</span>
+        <br>
+        <span style="font-size:13px;color:#888">Export follower profiles for AI analysis</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Check if account is configured
+    if not st.session_state.verified:
+        st.warning("Please sign in first.")
+    else:
+        st.markdown("""
+        <div style="margin-bottom:16px">
+            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Export Follower Profiles</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div style="font-size:13px;color:#888;margin-bottom:20px">
+            Extract all follower profiles (handle, bio, followers, following, etc.) and download as JSON.
+            <br>Use with Claude, ChatGPT, or other AI tools to analyze your audience.
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Export button
+        if st.button("📥 EXPORT FOLLOWER PROFILES", use_container_width=True):
+            with st.spinner("Fetching follower profiles..."):
+                try:
+                    client = st.session_state.client
+                    handle = st.session_state.handle
+
+                    # Fetch all followers
+                    followers = []
+                    cursor = None
+
+                    while True:
+                        params = {"actor": handle, "limit": 100}
+                        if cursor:
+                            params["cursor"] = cursor
+                        result = client.app.bsky.graph.get_followers(params)
+
+                        for user in result.followers:
+                            followers.append({
+                                "handle": user.handle,
+                                "display_name": user.display_name or "",
+                                "bio": user.description or "",
+                            })
+
+                        cursor = result.cursor
+                        if not cursor:
+                            break
+
+                    # Save to JSON
+                    import json
+                    from datetime import datetime
+
+                    export_data = {
+                        "exported_at": datetime.now().isoformat(),
+                        "account": handle,
+                        "total_followers": len(followers),
+                        "followers": followers,
+                    }
+
+                    json_str = json.dumps(export_data, indent=2, ensure_ascii=False)
+
+                    # Show stats
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("Total Followers", len(followers))
+                    with col2:
+                        bios_count = sum(1 for f in followers if f["bio"])
+                        st.metric("With Bio", bios_count)
+
+                    # Download button
+                    st.download_button(
+                        label="⬇️ DOWNLOAD JSON",
+                        data=json_str,
+                        file_name=f"followers_{handle}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                        mime="application/json",
+                        use_container_width=True,
+                    )
+
+                    # Preview
+                    st.markdown("""
+                    <div style="margin-top:20px;margin-bottom:10px">
+                        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Preview (first 5)</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    for f in followers[:5]:
+                        st.markdown(f"""
+                        <div style="background:#111;border:1px solid #222;border-radius:4px;padding:12px;margin-bottom:8px">
+                            <div style="font-size:13px;color:#c8c8c8;font-weight:600">@{f['handle']}</div>
+                            <div style="font-size:12px;color:#888;margin-top:4px">{f['display_name']}</div>
+                            <div style="font-size:12px;color:#666;margin-top:4px">{f['bio'][:100]}{'...' if len(f['bio']) > 100 else ''}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                except Exception as e:
+                    st.error(f"Failed to export profiles: {str(e)[:200]}")
