@@ -234,7 +234,7 @@ elif page == "FOLLOW":
         page_title="Follow",
         page_description="Build your audience by following relevant accounts",
         runner=st.session_state.follow_runner,
-        settings_key="grow_settings",
+        settings_key="follow_settings",
         bot_func=follow_bot_run,
         settings_fields=[
             {"key": "pull_limit", "label": "PULL LIMIT", "min": 10, "max": 500, "default": 300, "step": 10,
@@ -285,7 +285,7 @@ elif page == "UNFOLLOW":
         page_title="Unfollow",
         page_description="Unfollow accounts that don't follow you back after X days",
         runner=st.session_state.unfollow_runner,
-        settings_key="cleanup_settings",
+        settings_key="unfollow_settings",
         bot_func=unfollow_bot_run,
         settings_fields=[
             {"key": "days_threshold", "label": "DAYS THRESHOLD", "min": 1, "max": 365, "default": 30, "step": 1,
