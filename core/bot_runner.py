@@ -4,6 +4,7 @@ Thread-safe bot runner and stats refresher.
 
 import threading
 import time
+from collections import deque
 from datetime import datetime
 
 
@@ -16,7 +17,7 @@ class BotRunner:
         self._thread = None
         self._running = False
         self._stop_requested = False
-        self._log_lines = []
+        self._log_lines = deque(maxlen=200)
         self._results = None
         self._error = None
         self._progress = {"completed": 0, "total": 0}
@@ -39,7 +40,7 @@ class BotRunner:
                 return False
             self._running = True
             self._stop_requested = False
-            self._log_lines = []
+            self._log_lines = deque(maxlen=200)
             self._results = None
             self._error = None
             self._progress = {"completed": 0, "total": 0}
@@ -78,7 +79,7 @@ class BotRunner:
     def get_logs(self):
         """Get current log lines (thread-safe)."""
         with self._lock:
-            return self._log_lines.copy()
+            return list(self._log_lines)
 
     def get_progress(self):
         """Get current progress (thread-safe)."""
@@ -107,7 +108,7 @@ class BotRunner:
         with self._lock:
             self._running = False
             self._stop_requested = False
-            self._log_lines = []
+            self._log_lines = deque(maxlen=200)
             self._results = None
             self._error = None
 
