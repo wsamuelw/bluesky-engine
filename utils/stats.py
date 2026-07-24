@@ -85,12 +85,14 @@ def get_stats(handle: str, client: Client) -> dict:
     reply_rate = 0
     repost_rate = 0
     avg_replies_per_post = 0
+    avg_likes_per_post = 0
     feed = results.get("feed")
     if feed and feed.feed and followers > 0:
         try:
             total_engagement = 0
             total_replies = 0
             total_reposts = 0
+            total_likes = 0
             for item in feed.feed:
                 likes = item.post.like_count or 0
                 replies = item.post.reply_count or 0
@@ -98,9 +100,12 @@ def get_stats(handle: str, client: Client) -> dict:
                 total_engagement += likes + replies + reposts
                 total_replies += replies
                 total_reposts += reposts
-            avg_engagement = total_engagement / len(feed.feed)
+                total_likes += likes
+            num_posts = len(feed.feed)
+            avg_engagement = total_engagement / num_posts
             engagement_rate = round((avg_engagement / followers) * 100, 2)
-            avg_replies_per_post = round(total_replies / len(feed.feed), 1)
+            avg_replies_per_post = round(total_replies / num_posts, 1)
+            avg_likes_per_post = round(total_likes / num_posts, 1)
             # Reply rate: replies as % of total engagement
             if total_engagement > 0:
                 reply_rate = round((total_replies / total_engagement) * 100, 1)
@@ -132,6 +137,7 @@ def get_stats(handle: str, client: Client) -> dict:
         "reply_rate": reply_rate,
         "repost_rate": repost_rate,
         "avg_replies_per_post": avg_replies_per_post,
+        "avg_likes_per_post": avg_likes_per_post,
         "growth_rate_7d": growth_rate_7d,
         "follow_ratio": follow_ratio,
         "non_followers": max(0, following - followers),

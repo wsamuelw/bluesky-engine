@@ -51,7 +51,7 @@ def render():
             engagement_rate = stats["engagement_rate"]
             reply_rate = stats["reply_rate"]
             repost_rate = stats["repost_rate"]
-            growth_rate_7d = stats["growth_rate_7d"]
+            avg_likes_per_post = stats["avg_likes_per_post"]
             follow_ratio = stats["follow_ratio"]
             non_followers = stats["non_followers"]
 
@@ -71,6 +71,14 @@ def render():
                 er_color = "#fbbf24"
             else:
                 er_color = "#f87171"
+
+            # Avg likes/Post colour (based on absolute value)
+            if avg_likes_per_post >= 10:
+                alp_color = "#4ade80"
+            elif avg_likes_per_post >= 3:
+                alp_color = "#fbbf24"
+            else:
+                alp_color = "#f87171"
 
             # Save snapshot
             save_snapshot(followers, following)
@@ -132,10 +140,10 @@ def render():
             col1, col2, col3, col4 = st.columns(4)
 
             with col1:
-                render_metric_card("Growth Rate", growth_rate_7d, "Average new followers per day over the last 7 days", "#4ade80", subtitle="followers/day")
+                render_metric_card("Avg Likes/Post", avg_likes_per_post, "Average likes per post based on your last 20 posts. Higher = better content", alp_color, subtitle="per post")
 
             with col2:
-                render_metric_card("Followers", f"{followers:,}", "Total accounts following you", subtitle=f"+{growth_rate_7d}/day avg")
+                render_metric_card("Followers", f"{followers:,}", "Total accounts following you", subtitle=f"{posts_per_day} posts/day")
 
             with col3:
                 render_metric_card("Engagement", f"{engagement_rate}%", "Average engagement (likes, replies, reposts) per post as % of followers, based on last 20 posts", er_color, subtitle="of followers")
