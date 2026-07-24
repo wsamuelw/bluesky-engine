@@ -1005,7 +1005,7 @@ if not st.session_state.verified:
 
         # Trust message (always visible)
         st.markdown("""
-        <div style="text-align:center;margin-top:24px;font-size:10px;color:#555;font-family:'JetBrains Mono',monospace">
+        <div style="text-align:center;margin-top:24px;font-size:10px;color:#777;font-family:'JetBrains Mono',monospace">
             Your password is sent directly to Bluesky's servers. We never see or store it.
         </div>
         """, unsafe_allow_html=True)
