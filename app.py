@@ -1226,7 +1226,7 @@ if page == "DASHBOARD":
                 </div>
                 """, unsafe_allow_html=True)
             with col_btn:
-                if st.button("⟳ Refresh", key="refresh_stats", use_container_width=True):
+                if st.button("REFRESH", key="refresh_stats", use_container_width=True):
                     try:
                         stats = get_stats(st.session_state.handle, st.session_state.client)
                         st.session_state.cached_stats = stats
@@ -1436,12 +1436,12 @@ if page == "LIKE":
         col_btn, col_spacer = st.columns([1, 3])
         with col_btn:
             if runner.running:
-                st.button("⏳ RUNNING...", key="like_running", use_container_width=True, disabled=True)
-                if st.button("⏹ STOP", key="stop_like", use_container_width=True, type="primary"):
+                st.button("RUNNING...", key="like_running", use_container_width=True, disabled=True)
+                if st.button("STOP", key="stop_like", use_container_width=True, type="primary"):
                     runner.stop()
                     st.rerun()
             else:
-                run_clicked = st.button("▶ RUN LIKE", key="run_like", use_container_width=True)
+                run_clicked = st.button("RUN LIKE", key="run_like", use_container_width=True)
 
         # Live log
         status_class = "live" if runner.running else "idle"
@@ -1508,7 +1508,7 @@ if page == "LIKE":
                 else:
                     st.error(f"Bot error: {error}")
                 # Retry button
-                if st.button("🔄 RETRY", key="retry_like"):
+                if st.button("RETRY", key="retry_like"):
                     settings = st.session_state.get("like_settings", {})
                     if settings:
                         runner.start(
@@ -1550,7 +1550,7 @@ if page == "LIKE":
                         • Likes per user: 2<br>
                         • Daily cap: 200<br>
                         • Delay: 5–10 sec<br><br>
-                        <span style="color:#666">Click ▶ RUN LIKE above to start.</span>
+                        <span style="color:#666">Click RUN LIKE above to start.</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1646,12 +1646,12 @@ if page == "FOLLOW":
         col_btn, col_spacer = st.columns([1, 3])
         with col_btn:
             if runner.running:
-                st.button("⏳ RUNNING...", key="follow_running", use_container_width=True, disabled=True)
-                if st.button("⏹ STOP", key="stop_follow", use_container_width=True, type="primary"):
+                st.button("RUNNING...", key="follow_running", use_container_width=True, disabled=True)
+                if st.button("STOP", key="stop_follow", use_container_width=True, type="primary"):
                     runner.stop()
                     st.rerun()
             else:
-                follow_run_clicked = st.button("▶ RUN FOLLOW", key="run_follow", use_container_width=True)
+                follow_run_clicked = st.button("RUN FOLLOW", key="run_follow", use_container_width=True)
 
         # Live log
         status_class = "live" if runner.running else "idle"
@@ -1732,7 +1732,7 @@ if page == "FOLLOW":
                 else:
                     st.error(f"Bot error: {error}")
                 # Retry button
-                if st.button("🔄 RETRY", key="retry_follow"):
+                if st.button("RETRY", key="retry_follow"):
                     settings = st.session_state.get("follow_settings", {})
                     if settings:
                         runner.start(
@@ -1775,7 +1775,7 @@ if page == "FOLLOW":
                         • Pull limit: 100<br>
                         • Daily cap: 50 (start conservative)<br>
                         • Auto-like: 2 (likes posts after following)<br><br>
-                        <span style="color:#666">Set a target account above, then click ▶ RUN FOLLOW.</span>
+                        <span style="color:#666">Set a target account above, then click RUN FOLLOW.</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1868,12 +1868,12 @@ if page == "UNFOLLOW":
         col_btn, col_spacer = st.columns([1, 3])
         with col_btn:
             if runner.running:
-                st.button("⏳ RUNNING...", key="unfollow_running", use_container_width=True, disabled=True)
-                if st.button("⏹ STOP", key="stop_unfollow", use_container_width=True, type="primary"):
+                st.button("RUNNING...", key="unfollow_running", use_container_width=True, disabled=True)
+                if st.button("STOP", key="stop_unfollow", use_container_width=True, type="primary"):
                     runner.stop()
                     st.rerun()
             else:
-                unfollow_clicked = st.button("🚪 RUN UNFOLLOW", key="run_unfollow", use_container_width=True)
+                unfollow_clicked = st.button("RUN UNFOLLOW", key="run_unfollow", use_container_width=True)
 
         # Live log
         status_class = "live" if runner.running else "idle"
@@ -1942,7 +1942,7 @@ if page == "UNFOLLOW":
                 else:
                     st.error(f"Bot error: {error}")
                 # Retry button
-                if st.button("🔄 RETRY", key="retry_unfollow"):
+                if st.button("RETRY", key="retry_unfollow"):
                     settings = st.session_state.get("unfollow_settings", {})
                     if settings:
                         runner.start(
@@ -1985,7 +1985,7 @@ if page == "UNFOLLOW":
                         • Daily cap: 100<br>
                         • Delay: 5–15 sec<br>
                         • Add exemptions for accounts you never want to unfollow<br><br>
-                        <span style="color:#666">Click ▶ RUN UNFOLLOW above to start.</span>
+                        <span style="color:#666">Click RUN UNFOLLOW above to start.</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -2022,7 +2022,7 @@ if page == "EXPORT":
         """, unsafe_allow_html=True)
 
         # Export button
-        if st.button("📥 EXPORT FOLLOWER PROFILES", use_container_width=True):
+        if st.button("EXPORT FOLLOWER PROFILES", use_container_width=True):
             try:
                 client = st.session_state.client
                 handle = st.session_state.handle
@@ -2080,7 +2080,7 @@ if page == "EXPORT":
 
                 # Download button
                 st.download_button(
-                    label="⬇️ DOWNLOAD JSON",
+                    label="DOWNLOAD JSON",
                     data=json_str,
                     file_name=f"followers_{handle}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                     mime="application/json",
