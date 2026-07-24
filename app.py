@@ -1,306 +1,12 @@
 """
-Bluesky Growth — Terminal Style Dashboard
+Bluesky Growth Engine — Terminal Style Dashboard
 Streamlit app for managing Bluesky follow/like/unfollow bots.
 """
 
 import streamlit as st
-import streamlit.components.v1 as components
-import time
 import subprocess
-import threading
-from datetime import datetime
-
-
-def get_version():
-    """Get version from git commit hash."""
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True,
-            text=True,
-            cwd="/Users/samuel/projects/bluesky-engine"
-        )
-        if result.returncode == 0:
-            return f"v{result.stdout.strip()}"
-    except:
-        pass
-    return "v1.0"
-
-from atproto.exceptions import AtProtocolError
-from utils.auth import login
-from utils.stats import get_stats
-from utils.tracker import load_history, save_snapshot, get_chart_data
-from bots.like_bot import like_bot_run
-from bots.follow_bot import follow_bot_run
-from bots.unfollow_bot import unfollow_bot_run, get_unfollow_preview
-
-
-# =============================================================
-# CACHED BLUESKY CLIENT
-# =============================================================
-
-@st.cache_resource
-def get_bluesky_client(handle: str, password: str):
-    """Returns a cached authenticated client. Reused across reruns."""
-    return login(handle, password)
-
-
-# =============================================================
-# THREAD-SAFE BOT RUNNER
-# =============================================================
-
-class BotRunner:
-    """Manages bot execution in a background thread with thread-safe state."""
-
-    def __init__(self, name):
-        self._name = name
-        self._lock = threading.Lock()
-        self._thread = None
-        self._running = False
-        self._stop_requested = False
-        self._log_lines = []
-        self._results = None
-        self._error = None
-        self._progress = {"completed": 0, "total": 0}
-        self._start_time = None
-
-    @property
-    def running(self):
-        with self._lock:
-            return self._running
-
-    @property
-    def stop_requested(self):
-        with self._lock:
-            return self._stop_requested
-
-    def start(self, bot_func, *args, **kwargs):
-        """Start bot in background thread."""
-        with self._lock:
-            if self._running:
-                return False
-            self._running = True
-            self._stop_requested = False
-            self._log_lines = []
-            self._results = None
-            self._error = None
-            self._progress = {"completed": 0, "total": 0}
-            self._start_time = time.time()
-
-        def run():
-            try:
-                # Add stop_check to kwargs
-                kwargs['stop_check'] = lambda: self.stop_requested
-                # Create thread-safe log callback
-                def log_callback(line):
-                    with self._lock:
-                        self._log_lines.append(line)
-                kwargs['log_callback'] = log_callback
-                # Create thread-safe progress callback
-                def progress_callback(completed, total):
-                    with self._lock:
-                        self._progress = {"completed": completed, "total": total}
-                kwargs['progress_callback'] = progress_callback
-                # Run the bot
-                results = bot_func(*args, **kwargs)
-                with self._lock:
-                    self._results = results
-            except Exception as e:
-                with self._lock:
-                    self._error = str(e)
-            finally:
-                with self._lock:
-                    self._running = False
-
-        self._thread = threading.Thread(target=run, daemon=True)
-        self._thread.start()
-        return True
-
-    def stop(self):
-        """Request bot to stop."""
-        with self._lock:
-            self._stop_requested = True
-
-    def get_logs(self):
-        """Get current log lines (thread-safe)."""
-        with self._lock:
-            return self._log_lines.copy()
-
-    def get_progress(self):
-        """Get current progress (thread-safe)."""
-        with self._lock:
-            return self._progress.copy()
-
-    def update_progress(self, completed, total):
-        """Update progress (thread-safe)."""
-        with self._lock:
-            self._progress = {"completed": completed, "total": total}
-
-    def get_results(self):
-        """Get bot results (thread-safe)."""
-        with self._lock:
-            return self._results
-
-    def get_elapsed_seconds(self):
-        """Get elapsed seconds since bot started."""
-        with self._lock:
-            if self._start_time is None:
-                return 0
-            return time.time() - self._start_time
-
-    def get_error(self):
-        """Get error message (thread-safe)."""
-        with self._lock:
-            return self._error
-
-    def clear(self):
-        """Clear all state."""
-        with self._lock:
-            self._running = False
-            self._stop_requested = False
-            self._log_lines = []
-            self._results = None
-            self._error = None
-
-
-# Global bot runners (persists across Streamlit reruns)
-if 'like_runner' not in st.session_state:
-    st.session_state.like_runner = BotRunner("LIKE")
-
-
-if 'follow_runner' not in st.session_state:
-    st.session_state.follow_runner = BotRunner("FOLLOW")
-
-if 'unfollow_runner' not in st.session_state:
-    st.session_state.unfollow_runner = BotRunner("UNFOLLOW")
-
-
-def any_bot_running():
-    """Check if any bot is currently running."""
-    return (st.session_state.like_runner.running or
-            st.session_state.follow_runner.running or
-            st.session_state.unfollow_runner.running)
-
-
-def get_running_bot_name():
-    """Get the name of the currently running bot."""
-    if st.session_state.like_runner.running:
-        return "LIKE"
-    elif st.session_state.follow_runner.running:
-        return "FOLLOW"
-    elif st.session_state.unfollow_runner.running:
-        return "UNFOLLOW"
-    return None
-
-
-# =============================================================
-# BACKGROUND STATS REFRESHER
-# =============================================================
-
-class StatsRefresher:
-    """Polls Bluesky in the background to keep dashboard stats fresh."""
-
-    def __init__(self):
-        self._lock = threading.Lock()
-        self._thread = None
-        self._stop = threading.Event()
-        self._last_updated = None
-        self._auth_expired = False
-
-    @property
-    def last_updated(self):
-        with self._lock:
-            return self._last_updated
-
-    @property
-    def auth_expired(self):
-        with self._lock:
-            return self._auth_expired
-
-    def start(self, handle, client):
-        if self._thread is not None and self._thread.is_alive():
-            return
-        self._stop.clear()
-        self._auth_expired = False
-
-        def run():
-            while not self._stop.is_set():
-                self._stop.wait(300)  # 5 minutes
-                if self._stop.is_set():
-                    break
-                try:
-                    stats = get_stats(handle, client)
-                    st.session_state.cached_stats = stats
-                    with self._lock:
-                        self._last_updated = datetime.now()
-                except Exception as e:
-                    err = str(e).lower()
-                    if "auth" in err or "invalid" in err or "expired" in err or "unauthorized" in err:
-                        with self._lock:
-                            self._auth_expired = True
-                        break
-
-        self._thread = threading.Thread(target=run, daemon=True)
-        self._thread.start()
-
-    def stop(self):
-        self._stop.set()
-
-
-if 'stats_refresher' not in st.session_state:
-    st.session_state.stats_refresher = StatsRefresher()
-
-
-@st.fragment(run_every=2)
-def live_log_panel(runner: BotRunner):
-    """Self-refreshing log panel that doesn't freeze the UI."""
-    logs = runner.get_logs()
-    progress = runner.get_progress()
-
-    # Show progress counter if available
-    if progress["total"] > 0:
-        elapsed = runner.get_elapsed_seconds()
-        elapsed_min = int(elapsed // 60)
-        elapsed_sec = int(elapsed % 60)
-
-        # Calculate ETA
-        if progress["completed"] > 0:
-            rate = elapsed / progress["completed"]
-            remaining = rate * (progress["total"] - progress["completed"])
-            eta_min = int(remaining // 60)
-            eta_sec = int(remaining % 60)
-            eta_str = f"{eta_min}:{eta_sec:02d}"
-        else:
-            eta_str = "calculating..."
-
-        st.markdown(f"""
-        <div style="padding:8px 12px;background:#111;border:1px solid #222;border-radius:2px;margin-bottom:10px;font-size:12px;color:#888;font-family:'JetBrains Mono',monospace">
-            Progress: <strong style="color:#00d4ff">{progress['completed']}</strong> / {progress['total']}
-            · Elapsed: {elapsed_min}:{elapsed_sec:02d}
-            · ETA: ~{eta_str}
-        </div>
-        """, unsafe_allow_html=True)
-
-    if logs:
-        # Show newest first (descending order)
-        log_text = "\n".join(reversed(logs[-50:]))
-        st.code(log_text, language="bash")
-    else:
-        st.code("Starting bot...", language="bash")
-    if not runner.running:
-        st.rerun()
-
-
-def send_notification(title: str, body: str):
-    """Send a browser notification if permission is granted."""
-    components.html(f"""
-    <script>
-    if ("Notification" in window && Notification.permission === "granted") {{
-        new Notification("{title}", {{body: "{body}"}});
-    }}
-    </script>
-    """, height=0)
-
+import os
+from pathlib import Path
 
 # =============================================================
 # PAGE CONFIG
@@ -314,642 +20,69 @@ st.set_page_config(
 )
 
 # =============================================================
-# CUSTOM CSS — Terminal Style
+# LOAD CSS
 # =============================================================
 
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap');
+css_path = Path(__file__).parent / "styles.css"
+st.markdown(f"<style>{css_path.read_text()}</style>", unsafe_allow_html=True)
 
-/* Override Streamlit defaults */
-.stApp {
-    background: #0a0a0a;
-    color: #c8c8c8;
-}
+# =============================================================
+# CACHED RESOURCES
+# =============================================================
 
-/* Hide Streamlit running indicator (top right spinner) */
-.stStatusWidget,
-header[data-testid="stHeader"] .stSpinner,
-.stSpinner {
-    display: none !important;
-}
+@st.cache_resource
+def get_bluesky_client(handle: str, password: str):
+    """Returns a cached authenticated client."""
+    from utils.auth import login
+    return login(handle, password)
 
-/* Override Streamlit alert widgets to match dark theme */
-div[data-testid="stAlert"],
-div.stAlert,
-.element-container div[data-baseweb="notification"] {
-    background: #111 !important;
-    border: 1px solid #333 !important;
-    border-radius: 2px !important;
-    color: #c8c8c8 !important;
-}
-div[data-testid="stAlert"] > div,
-div.stAlert > div,
-.element-container div[data-baseweb="notification"] > div {
-    color: #c8c8c8 !important;
-    background: transparent !important;
-}
-/* Warning — subtle amber border */
-div[data-testid="stWarning"],
-div[data-baseweb="notification"][kind="warning"] {
-    border-left: 3px solid #fbbf24 !important;
-    background: #1a1500 !important;
-}
-/* Info — subtle blue border */
-div[data-testid="stInfo"],
-div[data-baseweb="notification"][kind="info"] {
-    border-left: 3px solid #00d4ff !important;
-    background: #001a22 !important;
-}
-/* Error — subtle red border */
-div[data-testid="stError"],
-div[data-baseweb="notification"][kind="error"] {
-    border-left: 3px solid #f87171 !important;
-    background: #1a0000 !important;
-}
-/* Success — subtle green border */
-div[data-testid="stSuccess"],
-div[data-baseweb="notification"][kind="success"] {
-    border-left: 3px solid #4ade80 !important;
-    background: #001a0d !important;
-}
 
-/* Main content area */
-.main .block-container {
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-    max-width: 1400px;
-}
-
-/* Typography */
-h1, h2, h3, h4, h5, h6, p, span, div, label {
-    font-family: 'JetBrains Mono', monospace !important;
-    color: #c8c8c8;
-}
-
-/* Form spacing — consistent 12px between elements */
-.stForm > div > div > div {
-    margin-bottom: 12px !important;
-}
-.stForm > div > div > div:last-child {
-    margin-bottom: 0 !important;
-}
-
-/* Metric tooltip */
-[data-tooltip] {
-    position: relative;
-    cursor: help;
-}
-[data-tooltip]:hover::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #222;
-    color: #c8c8c8;
-    padding: 8px 12px;
-    border-radius: 2px;
-    font-size: 11px;
-    font-family: 'JetBrains Mono', monospace;
-    white-space: normal;
-    word-wrap: break-word;
-    max-width: 220px;
-    width: max-content;
-    z-index: 1000;
-    border: 1px solid #444;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    text-transform: none;
-    letter-spacing: 0;
-}
-[data-tooltip]:hover::before {
-    content: '';
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 5px solid transparent;
-    border-top-color: #444;
-    margin-bottom: -5px;
-    z-index: 1000;
-}
-
-/* Topbar */
-/* Sidebar - always visible */
-[data-testid="stSidebar"] {
-    background: #111;
-    border-right: 1px solid #222;
-    padding: 20px 16px;
-    min-width: 200px !important;
-    max-width: 200px !important;
-}
-/* Hide collapse/expand buttons - sidebar always shown */
-[data-testid="stSidebarCollapseButton"],
-[data-testid="stSidebarCollapsedControl"],
-button[kind="header"] {
-    display: none !important;
-}
-/* Force sidebar always visible */
-section[data-testid="stSidebar"] {
-    transform: translateX(0) !important;
-    visibility: visible !important;
-    position: relative !important;
-}
-/* Sidebar nav buttons — base reset for all button types */
-section[data-testid="stSidebar"] button[kind="secondary"],
-section[data-testid="stSidebar"] button[kind="primary"],
-section[data-testid="stSidebar"] button[kind="tertiary"] {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    color: #999 !important;
-    -webkit-text-fill-color: #999 !important;
-    font-family: 'JetBrains Mono', monospace !important;
-    font-size: 12px !important;
-    -webkit-text-size-adjust: 100% !important;
-    text-transform: uppercase !important;
-    letter-spacing: 1px !important;
-    padding: 6px 8px !important;
-    margin: 0 !important;
-    text-align: left !important;
-    justify-content: flex-start !important;
-}
-/* Remove gap between sidebar button containers */
-section[data-testid="stSidebar"] .stButton {
-    margin-bottom: 0 !important;
-    padding-bottom: 0 !important;
-}
-section[data-testid="stSidebar"] .stButton > div {
-    margin-bottom: 0 !important;
-    padding-bottom: 0 !important;
-}
-section[data-testid="stSidebar"] .element-container {
-    margin-bottom: 0 !important;
-    padding-bottom: 0 !important;
-}
-section[data-testid="stSidebar"] button[kind="secondary"] p,
-section[data-testid="stSidebar"] button[kind="primary"] p,
-section[data-testid="stSidebar"] button[kind="tertiary"] p,
-section[data-testid="stSidebar"] button[kind="secondary"] span,
-section[data-testid="stSidebar"] button[kind="primary"] span,
-section[data-testid="stSidebar"] button[kind="tertiary"] span {
-    font-size: 12px !important;
-    text-align: left !important;
-    justify-content: flex-start !important;
-    border-radius: 2px !important;
-    transition: all 0.15s ease !important;
-    width: 100% !important;
-    margin-bottom: 0 !important;
-}
-section[data-testid="stSidebar"] button[kind="secondary"]:hover,
-section[data-testid="stSidebar"] button[kind="primary"]:hover,
-section[data-testid="stSidebar"] button[kind="tertiary"]:hover {
-    color: #c8c8c8 !important;
-    -webkit-text-fill-color: #c8c8c8 !important;
-    background: #1a1a1a !important;
-}
-/* Inactive nav button — explicit secondary override */
-section[data-testid="stSidebar"] button[kind="secondary"] {
-    color: #999 !important;
-    -webkit-text-fill-color: #999 !important;
-    background: transparent !important;
-}
-/* Active nav button — same blue as brand */
-section[data-testid="stSidebar"] button[kind="primary"] {
-    color: #00d4ff !important;
-    -webkit-text-fill-color: #00d4ff !important;
-    background: #1a1a1a !important;
-}
-.stTabs [data-baseweb="tab-border"] {
-    display: none !important;
-}
-.stTabs [data-baseweb="tab-highlight"] {
-    display: none !important;
-    background: transparent !important;
-    height: 0 !important;
-    border: none !important;
-}
-.stTabs [data-baseweb="tab-highlight"] > div {
-    background: transparent !important;
-    height: 0 !important;
-    border: none !important;
-}
-/* Remove all possible underline effects */
-.stTabs div[role="tab"][aria-selected="true"]::after {
-    display: none !important;
-    background: transparent !important;
-    height: 0 !important;
-}
-.stTabs div[role="tab"][aria-selected="true"]::before {
-    display: none !important;
-    background: transparent !important;
-    height: 0 !important;
-}
-.stTabs div[role="tab"]::after {
-    display: none !important;
-}
-.stTabs div[role="tab"]::before {
-    display: none !important;
-}
-/* Target any possible highlight elements */
-.stTabs [data-baseweb="tab-highlight"],
-.stTabs [data-baseweb="tab-highlight"] > div,
-.stTabs [data-baseweb="tab-highlight"] > div > div {
-    display: none !important;
-    background: transparent !important;
-    height: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
-}
-
-/* Ticker strip */
-.ticker {
-    background: #111;
-    border: 1px solid #222;
-    padding: 14px 20px;
-    display: flex;
-    gap: 32px;
-    margin-bottom: 20px;
-    overflow-x: auto;
-    font-family: 'JetBrains Mono', monospace;
-}
-.ticker-item {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    white-space: nowrap;
-}
-.ticker-item .label {
-    color: #888;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-.ticker-item .value {
-    font-size: 20px;
-    font-weight: 700;
-    color: #e0e0e0;
-}
-.ticker-item .delta {
-    font-size: 11px;
-    font-weight: 600;
-}
-.ticker-item .delta.up { color: #4ade80; }
-.ticker-item .delta.down { color: #f87171; }
-
-/* Panels */
-.panel {
-    background: #111;
-    border: 1px solid #222;
-    margin-bottom: 20px;
-}
-.panel-header {
-    padding: 10px 16px;
-    border-bottom: 1px solid #222;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-.panel-header .title {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: #888;
-    font-family: 'JetBrains Mono', monospace;
-}
-.panel-header .status {
-    font-size: 10px;
-    padding: 2px 8px;
-    border-radius: 2px;
-    font-family: 'JetBrains Mono', monospace;
-}
-.panel-header .status.live {
-    background: #00d4ff22;
-    color: #00d4ff;
-}
-.panel-header .status.idle {
-    background: #333;
-    color: #666;
-}
-.panel-body {
-    padding: 16px;
-    font-family: 'JetBrains Mono', monospace;
-}
-
-/* Log output */
-.log-output {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    line-height: 1.8;
-    max-height: 400px;
-    overflow-y: auto;
-    background: #0a0a0a;
-    padding: 12px;
-    border: 1px solid #222;
-}
-.log-output .time { color: #666; }
-.log-output .ok { color: #00d4ff; }
-.log-output .info { color: #888; }
-.log-output .err { color: #f87171; }
-.log-output .skip { color: #fbbf24; }
-
-/* Action bar */
-.action-bar {
-    background: #111;
-    border: 1px solid #222;
-    padding: 16px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 20px;
-}
-.action-bar .info {
-    color: #888;
-    font-size: 12px;
-    font-family: 'JetBrains Mono', monospace;
-}
-.action-bar .info strong { color: #c8c8c8; }
-
-/* Buttons */
-.stButton > button,
-.stFormSubmitButton > button {
-    background: #00d4ff !important;
-    color: #0a0a0a !important;
-    border: none !important;
-    padding: 10px 24px !important;
-    font-family: 'JetBrains Mono', monospace !important;
-    font-size: 12px !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 1px !important;
-    border-radius: 2px !important;
-}
-.stButton > button:hover,
-.stFormSubmitButton > button:hover {
-    background: #00b8db !important;
-}
-.stButton > button span,
-.stFormSubmitButton > button span {
-    color: #0a0a0a !important;
-}
-.stButton > button p,
-.stFormSubmitButton > button p {
-    color: #0a0a0a !important;
-}
-/* Disabled buttons */
-.stButton > button:disabled,
-.stFormSubmitButton > button:disabled {
-    background: #222 !important;
-    color: #555 !important;
-    border: 1px solid #333 !important;
-    cursor: not-allowed !important;
-    opacity: 0.6 !important;
-}
-.stButton > button:disabled span,
-.stButton > button:disabled p,
-.stFormSubmitButton > button:disabled span,
-.stFormSubmitButton > button:disabled p {
-    color: #555 !important;
-}
-/* Hide form submit hint text */
-div[data-testid="stForm"] small,
-div[data-testid="stCaptionContainer"],
-div[data-testid="stForm"] div[data-testid="stCaptionContainer"],
-.stFormSubmitButton ~ div,
-.stFormSubmitButton ~ small,
-.stFormSubmitButton ~ span {
-    display: none !important;
-    visibility: hidden !important;
-    height: 0 !important;
-    overflow: hidden !important;
-}
-
-/* Hide password visibility toggle - remove from layout */
-[data-testid="stTextInput"] button {
-    display: none !important;
-    width: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    position: absolute !important;
-}
-
-/* Make all input fields same size */
-[data-testid="stTextInput"] > div > div {
-    position: relative !important;
-}
-[data-testid="stTextInput"] input {
-    width: 100% !important;
-    padding-right: 12px !important;
-}
-
-/* Input fields - consistent sizing */
-.stTextInput > div > div > input,
-.stNumberInput > div > div > input {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    color: #e0e0e0;
-    font-family: 'JetBrains Mono', monospace;
-    border-radius: 2px;
-    height: 40px !important;
-    box-sizing: border-box !important;
-}
-
-/* Force all text inputs to same width */
-.stTextInput {
-    width: 100% !important;
-}
-
-/* Focus states — keyboard accessibility */
-input:focus-visible,
-textarea:focus-visible,
-[data-testid="stTextInput"] input:focus-visible,
-[data-testid="stNumberInput"] input:focus-visible,
-[data-baseweb="input"] input:focus-visible {
-    outline: 2px solid #00d4ff !important;
-    outline-offset: -2px;
-    border-color: #00d4ff !important;
-}
-.stButton > button:focus-visible,
-.stFormSubmitButton > button:focus-visible {
-    outline: 2px solid #00d4ff !important;
-    outline-offset: 2px;
-}
-section[data-testid="stSidebar"] button:focus-visible {
-    outline: 2px solid #00d4ff !important;
-    outline-offset: -2px;
-    background: #1a1a1a !important;
-}
-
-/* Select box */
-.stSelectbox > div > div {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    color: #e0e0e0;
-    font-family: 'JetBrains Mono', monospace;
-    border-radius: 2px;
-}
-
-/* Metrics */
-.stMetric {
-    background: #111;
-    border: 1px solid #222;
-    padding: 16px;
-    border-radius: 2px;
-}
-.stMetric label {
-    color: #555 !important;
-    font-size: 11px !important;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-.stMetric [data-testid="stMetricValue"] {
-    color: #e0e0e0 !important;
-    font-size: 24px !important;
-}
-.stMetric [data-testid="stMetricDelta"] {
-    font-size: 12px !important;
-}
-
-/* Chart bars */
-.chart-bars {
-    display: flex;
-    align-items: flex-end;
-    gap: 2px;
-    height: 140px;
-    padding: 10px 0;
-}
-.chart-bars .col {
-    flex: 1;
-    background: #00d4ff;
-    min-height: 2px;
-    border-radius: 2px 2px 0 0;
-    opacity: 0.7;
-}
-.chart-bars .col:last-child { opacity: 1; }
-
-/* Table */
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-    font-family: 'JetBrains Mono', monospace;
-}
-.data-table th {
-    text-align: left;
-    padding: 8px 12px;
-    color: #555;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-size: 10px;
-    border-bottom: 1px solid #222;
-}
-.data-table td {
-    padding: 8px 12px;
-    border-bottom: 1px solid #1a1a1a;
-    color: #c8c8c8;
-}
-.data-table tr:hover td { background: #1a1a1a; }
-.tag {
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 2px;
-    font-family: 'JetBrains Mono', monospace;
-}
-.tag.active { background: #00d4ff22; color: #00d4ff; }
-.tag.paused { background: #fbbf2422; color: #fbbf24; }
-.tag.idle { background: #333; color: #aaa; }
-
-/* Hide Streamlit elements */
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-.stDeployButton {display: none;}
-
-/* Tabs */
-/* Duplicate tab styles removed - using the first set */
-
-/* Radio navigation */
-.stRadio > div {
-    display: flex;
-    gap: 4px;
-    background: #111;
-    border: 1px solid #222;
-    border-radius: 2px;
-    padding: 8px 12px;
-}
-.stRadio > div > label {
-    color: #888;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    padding: 8px 16px;
-    border-radius: 2px;
-    cursor: pointer;
-}
-.stRadio > div > label:hover {
-    color: #c8c8c8;
-    background: #1a1a1a;
-}
-.stRadio > div > label[data-checked="true"] {
-    color: #00d4ff;
-    background: #1a1a1a;
-}
-/* Stop button - red when running */
-button[key="stop_like"],
-button[key="stop_follow"],
-button[key="stop_unfollow"] {
-    background: #f87171 !important;
-    border-color: #f87171 !important;
-}
-button[key="stop_like"]:hover,
-button[key="stop_follow"]:hover,
-button[key="stop_unfollow"]:hover {
-    background: #ef4444 !important;
-    border-color: #ef4444 !important;
-}
-</style>
-""", unsafe_allow_html=True)
+@st.cache_resource(ttl=3600)
+def get_version():
+    """Get version from git commit hash (cached for 1 hour)."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd=str(Path(__file__).parent),
+        )
+        if result.returncode == 0:
+            return f"v{result.stdout.strip()}"
+    except Exception:
+        pass
+    return "v1.0"
 
 
 # =============================================================
-# SESSION STATE
+# SESSION STATE INIT
 # =============================================================
 
-# Single account
-if "handle" not in st.session_state:
-    st.session_state.handle = ""
+from core.bot_runner import BotRunner, StatsRefresher
 
-if "target" not in st.session_state:
-    st.session_state.target = ""
+if 'like_runner' not in st.session_state:
+    st.session_state.like_runner = BotRunner("LIKE")
+if 'follow_runner' not in st.session_state:
+    st.session_state.follow_runner = BotRunner("FOLLOW")
+if 'unfollow_runner' not in st.session_state:
+    st.session_state.unfollow_runner = BotRunner("UNFOLLOW")
+if 'stats_refresher' not in st.session_state:
+    st.session_state.stats_refresher = StatsRefresher()
 
-if "verified" not in st.session_state:
-    st.session_state.verified = False
-
-if "profile_handle" not in st.session_state:
-    st.session_state.profile_handle = ""
-
-if "profile_followers" not in st.session_state:
-    st.session_state.profile_followers = 0
-
-if "client" not in st.session_state:
-    st.session_state.client = None
-
-if "bot_running" not in st.session_state:
-    st.session_state.bot_running = False
-
-# Per-bot running states (now managed by BotRunner)
-# follow_bot_running, unfollow_bot_running - managed by runners
-# follow_bot_stop, unfollow_bot_stop - managed by runners
-# Log lines - managed by runners
-
-# Verification results
-if "verification_results" not in st.session_state:
-    st.session_state.verification_results = []
-
+for key, default in [
+    ("handle", ""),
+    ("target", ""),
+    ("verified", False),
+    ("profile_handle", ""),
+    ("profile_followers", 0),
+    ("client", None),
+    ("active_page", "DASHBOARD"),
+]:
+    if key not in st.session_state:
+        st.session_state[key] = default
 
 # =============================================================
-# LOADING SCREEN (first render — session state not yet restored)
+# LOADING SCREEN (first render)
 # =============================================================
 
 if "app_initialized" not in st.session_state:
@@ -976,112 +109,16 @@ if "app_initialized" not in st.session_state:
 # =============================================================
 
 if not st.session_state.verified:
-    # Center the login form
-    col1, col2, col3 = st.columns([5, 4, 5])
-
-    with col2:
-        # Brand header
-        st.markdown("""
-        <div style="text-align:center;margin-bottom:24px;margin-top:40px">
-            <span style="color:#00d4ff;font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-1px">bluesky-engine</span>
-            <div style="color:#888;font-size:13px;margin-top:8px;font-family:'JetBrains Mono',monospace">Build Your Audience on Bluesky</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Error message (if any)
-        if st.session_state.get("login_error"):
-            st.markdown(f"""
-            <div style="padding:12px 16px;background:rgba(255,60,60,0.1);border:1px solid rgba(255,60,60,0.3);
-                        border-radius:2px;margin-bottom:16px;font-size:13px;color:#f87171;font-family:'JetBrains Mono',monospace">
-                {st.session_state["login_error"]}
-            </div>
-            """, unsafe_allow_html=True)
-
-        # Login form
-        with st.form("login_form"):
-            st.markdown('<span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Handle</span>', unsafe_allow_html=True)
-            st.text_input(
-                "Handle",
-                placeholder="alice.bsky.social",
-                key="login_handle",
-                label_visibility="collapsed",
-            )
-
-            st.markdown('<span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">App Password</span>', unsafe_allow_html=True)
-            st.text_input(
-                "App Password",
-                type="password",
-                placeholder="xxxx-xxxx-xxxx-xxxx",
-                key="login_password",
-                label_visibility="collapsed",
-            )
-
-            submitted = st.form_submit_button("SIGN IN", use_container_width=True, type="primary")
-
-        # Trust message (always visible)
-        st.markdown("""
-        <div style="text-align:center;margin-top:24px;font-size:10px;color:#777;font-family:'JetBrains Mono',monospace">
-            Your password is sent directly to Bluesky's servers. We never see or store it.
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Instructions (always visible)
-        st.markdown("""
-        <div style="margin-top:24px;font-size:14px;color:#888;line-height:1.8;font-family:'JetBrains Mono',monospace;display:flex;justify-content:center">
-            <div style="text-align:left">
-                <strong style="color:#c8c8c8">How to get an app password:</strong><br>
-                1. Go to <a href="https://bsky.app/settings/app-passwords" target="_blank" style="color:#00d4ff">Settings > App Passwords</a> on bsky.app<br>
-                2. Click "Add App Password" and enter a name<br>
-                3. Copy and paste the password above
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        if submitted:
-            handle = st.session_state.login_handle.strip()
-            password = st.session_state.login_password.strip()
-
-            if not handle or not password:
-                st.session_state["login_error"] = "Please enter both handle and app password."
-                st.rerun()
-            elif "." not in handle:
-                st.session_state["login_error"] = f"Invalid handle '{handle}'. Use full format like alice.bsky.social"
-                st.rerun()
-            else:
-                st.session_state["login_error"] = None
-                try:
-                    with st.spinner("Authenticating with Bluesky..."):
-                        client = get_bluesky_client(handle, password)
-                        profile = client.app.bsky.actor.get_profile({"actor": handle})
-                    st.session_state.handle = handle
-                    st.session_state.verified = True
-                    st.session_state.client = client
-                    st.session_state.profile_handle = profile.handle
-                    st.session_state.profile_followers = profile.followers_count or 0
-                    # Start background stats refresher
-                    st.session_state.stats_refresher.start(handle, client)
-                    st.rerun()
-                except AtProtocolError:
-                    st.session_state["login_error"] = "Authentication failed. Check your handle and app password."
-                    st.rerun()
-                except Exception:
-                    st.session_state["login_error"] = "Something went wrong. Please try again."
-                    st.rerun()
-
-    # Stop here - don't show the main app
-    st.stop()
-
+    from pages.login import render as render_login
+    render_login(get_bluesky_client)
 
 # =============================================================
 # SIDEBAR NAVIGATION (shown only when verified)
 # =============================================================
 
-# Initialize active page
-if "active_page" not in st.session_state:
-    st.session_state.active_page = "DASHBOARD"
+from core.bot_runner import any_bot_running, get_running_bot_name
 
 with st.sidebar:
-    # Brand name
     version = get_version()
     st.markdown(f"""
     <div style="margin-bottom:32px">
@@ -1090,7 +127,6 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # Navigation buttons
     for nav_item in ["DASHBOARD", "LIKE", "FOLLOW", "UNFOLLOW", "EXPORT"]:
         is_active = st.session_state.active_page == nav_item
         if st.button(
@@ -1108,7 +144,7 @@ with st.sidebar:
         running_bot = get_running_bot_name()
         st.markdown(f"""
         <div style="font-size:11px;color:#fbbf24;font-family:'JetBrains Mono',monospace;padding:6px 8px;margin-bottom:8px">
-            ⚠ {running_bot} is running — stop it first
+            {running_bot} is running — stop it first
         </div>
         """, unsafe_allow_html=True)
         st.button("SIGN OUT", key="sidebar_signout", use_container_width=True, disabled=True)
@@ -1123,985 +159,166 @@ with st.sidebar:
 
 page = st.session_state.active_page
 
-
 # =============================================================
-# DASHBOARD TAB
+# PAGE ROUTING
 # =============================================================
 
 if page == "DASHBOARD":
-    # Check if account is configured and verified
-    if not st.session_state.verified:
-        st.info("Please sign in to view dashboard.")
-    elif st.session_state.stats_refresher.auth_expired:
-        st.warning("Your session has expired. Please sign out and sign back in.")
-    else:
-        # Show branded loading screen on first dashboard load after sign-in
-        import time
-        now = time.time()
+    from pages.dashboard import render as render_dashboard
+    render_dashboard()
 
-        # Show loading screen if stats haven't been fetched yet
-        if "cached_stats" not in st.session_state:
-            st.markdown("""
-            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh">
-                <span style="color:#00d4ff;font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-1px">bluesky-engine</span>
-                <div style="color:#888;font-size:13px;margin-top:12px;font-family:'JetBrains Mono',monospace">Fetching your data...</div>
-                <div style="margin-top:20px;width:120px;height:3px;background:#222;border-radius:2px;overflow:hidden">
-                    <div style="width:40%;height:100%;background:#00d4ff;border-radius:2px;animation:pulse 1.2s ease-in-out infinite"></div>
-                </div>
-            </div>
-            <style>
-                @keyframes pulse {
-                    0% {transform:translateX(-100%)}
-                    100% {transform:translateX(350%)}
-                }
-            </style>
-            """, unsafe_allow_html=True)
+elif page == "LIKE":
+    from bots.like_bot import like_bot_run
+    from pages.bot_page import render_bot_page
 
-            # Fetch stats in background
-            try:
-                client = st.session_state.client
-                stats = get_stats(st.session_state.handle, client)
-                st.session_state.cached_stats = stats
-                st.rerun()
-            except Exception:
-                st.error("Failed to fetch stats. Please try again.")
-                st.stop()
+    account = [{"handle": st.session_state.handle, "client": st.session_state.get("client"), "enabled": True}]
 
-        # Fetch stats for the account (cached in session state)
-        try:
-
-            if "cached_stats" in st.session_state:
-                stats = st.session_state.cached_stats
-            else:
-                with st.spinner("Fetching stats..."):
-                    client = st.session_state.client
-                    stats = get_stats(st.session_state.handle, client)
-                st.session_state.cached_stats = stats
-
-            followers = stats["followers"]
-            following = stats["following"]
-            posts_per_day = stats["posts_per_day"]
-            engagement_rate = stats["engagement_rate"]
-            reply_rate = stats["reply_rate"]
-            repost_rate = stats["repost_rate"]
-            avg_replies_per_post = stats["avg_replies_per_post"]
-            growth_rate_7d = stats["growth_rate_7d"]
-            follow_ratio = stats["follow_ratio"]
-            non_followers = stats["non_followers"]
-
-            # Calculate follow-back rate
-            follow_back_rate = (followers / following * 100) if following > 0 else 0
-
-            # Determine colors
-            if follow_back_rate >= 20:
-                fbr_color = "#4ade80"
-            elif follow_back_rate >= 10:
-                fbr_color = "#fbbf24"
-            else:
-                fbr_color = "#f87171"
-
-            if engagement_rate >= 5:
-                er_color = "#4ade80"
-            elif engagement_rate >= 2:
-                er_color = "#fbbf24"
-            else:
-                er_color = "#f87171"
-
-            # Save snapshot
-            save_snapshot(followers, following)
-
-            # Last updated timestamp + manual refresh
-            refresher = st.session_state.stats_refresher
-            last_ts = refresher.last_updated
-            if last_ts:
-                time_str = last_ts.strftime("%I:%M %p").lstrip("0")
-            else:
-                time_str = datetime.now().strftime("%I:%M %p").lstrip("0")
-
-            col_ts, col_btn = st.columns([6, 1])
-            with col_ts:
-                st.markdown(f"""
-                <div style="font-size:11px;color:#555;font-family:'JetBrains Mono',monospace;margin-bottom:16px">
-                    Last updated: {time_str} · Auto-refreshes every 5 min
-                </div>
-                """, unsafe_allow_html=True)
-            with col_btn:
-                if st.button("REFRESH", key="refresh_stats", use_container_width=True):
-                    try:
-                        stats = get_stats(st.session_state.handle, st.session_state.client)
-                        st.session_state.cached_stats = stats
-                        refresher._last_updated = datetime.now()
-                        st.rerun()
-                    except Exception:
-                        st.error("Failed to refresh.")
-
-            # Request notification permission (once per session)
-            if not st.session_state.get("notification_requested"):
-                components.html("""
-                <script>
-                if ("Notification" in window && Notification.permission === "default") {
-                    Notification.requestPermission();
-                }
-                </script>
-                """, height=0)
-                st.session_state.notification_requested = True
-
-            # Contextual guidance for edge cases
-            if followers == 0:
-                st.info("Your account has no followers yet. Start with the LIKE tab to warm up accounts, then use FOLLOW to grow.")
-            elif non_followers > following * 0.8 and following > 100:
-                st.markdown(f"""
-                <div style="padding:10px 16px;background:#1a1500;border:1px solid #333;border-left:3px solid #fbbf24;border-radius:2px;margin-bottom:16px;font-size:12px;color:#c8c8c8;font-family:'JetBrains Mono',monospace">
-                    High non-follower ratio ({non_followers:,} of {following:,}). Consider running the UNFOLLOW bot to clean up.
-                </div>
-                """, unsafe_allow_html=True)
-
-            # ─── SUCCESS METRICS ─────────────────────────────
-            st.markdown("""
-            <div style="margin-bottom:16px;margin-top:16px">
-                <span style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-family:'JetBrains Mono',monospace;font-weight:600">Success Metrics</span>
-                <span style="font-size:12px;color:#555;margin-left:12px;font-family:'JetBrains Mono',monospace">Are we winning?</span>
-            </div>
-            """, unsafe_allow_html=True)
-
-            col1, col2, col3, col4 = st.columns(4)
-
-            with col1:
-                st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
-                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Growth Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Average new followers per day over the last 7 days">ⓘ</span>
-                    </div>
-                    <div style="font-size:40px;font-weight:700;color:#4ade80">{growth_rate_7d}</div>
-                    <div style="font-size:12px;color:#666;margin-top:8px">followers/day</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col2:
-                st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
-                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Followers <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Total accounts following you">ⓘ</span>
-                    </div>
-                    <div style="font-size:40px;font-weight:700;color:#c8c8c8">{followers:,}</div>
-                    <div style="font-size:12px;color:#4ade80;margin-top:8px">+{growth_rate_7d}/day avg</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col3:
-                st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
-                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Engagement <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Average engagement (likes, replies, reposts) per post as % of followers, based on last 20 posts">ⓘ</span>
-                    </div>
-                    <div style="font-size:40px;font-weight:700;color:{er_color}">{engagement_rate}%</div>
-                    <div style="font-size:12px;color:#666;margin-top:8px">of followers</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col4:
-                st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
-                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Follow Ratio <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Followers ÷ Following. Higher = more credible account">ⓘ</span>
-                    </div>
-                    <div style="font-size:40px;font-weight:700;color:#c8c8c8">{follow_ratio:.1f}x</div>
-                    <div style="font-size:12px;color:#666;margin-top:8px">followers/following</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            # ─── KEY DRIVERS ──────────────────────────────────
-            st.markdown("""
-            <div style="margin-bottom:16px;margin-top:16px">
-                <span style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-family:'JetBrains Mono',monospace;font-weight:600">Key Drivers</span>
-                <span style="font-size:12px;color:#555;margin-left:12px;font-family:'JetBrains Mono',monospace">What do we change?</span>
-            </div>
-            """, unsafe_allow_html=True)
-
-            col5, col6, col7, col8 = st.columns(4)
-
-            with col5:
-                st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
-                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Follow-back Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="% of accounts you follow who follow you back. Optimize who you follow">ⓘ</span>
-                    </div>
-                    <div style="font-size:36px;font-weight:700;color:{fbr_color}">{follow_back_rate:.1f}%</div>
-                    <div style="font-size:12px;color:#666;margin-top:8px">target: 20%+</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col6:
-                st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
-                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Posts/Day <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Average posts per day. More posts = more engagement opportunities">ⓘ</span>
-                    </div>
-                    <div style="font-size:36px;font-weight:700;color:#c8c8c8">{posts_per_day}</div>
-                    <div style="font-size:12px;color:#666;margin-top:8px">target: 3+</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col7:
-                st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
-                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Reply Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Replies as % of total engagement. Higher = deeper conversations">ⓘ</span>
-                    </div>
-                    <div style="font-size:36px;font-weight:700;color:#c8c8c8">{reply_rate}%</div>
-                    <div style="font-size:12px;color:#666;margin-top:8px">target: 5%+</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col8:
-                st.markdown(f"""
-                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:32px;text-align:center">
-                    <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-                        Repost Rate <span style="cursor:help;color:#999;font-size:11px;vertical-align:super" data-tooltip="Reposts as % of total engagement. Higher = content spreading">ⓘ</span>
-                    </div>
-                    <div style="font-size:36px;font-weight:700;color:#c8c8c8">{repost_rate}%</div>
-                    <div style="font-size:12px;color:#666;margin-top:8px">target: 2%+</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-        except Exception as e:
-            st.error(f"Failed to fetch stats: {str(e)[:200]}")
-
-
-# =============================================================
-# LIKE TAB
-# =============================================================
-
-if page == "LIKE":
-    st.markdown("""
-    <div style="margin-bottom:20px">
-        <span style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-weight:600">Like</span>
-        <br>
-        <span style="font-size:13px;color:#888">Like posts from non-followers randomly to get their attention</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Check if account is configured
-    if not st.session_state.verified:
-        st.warning("Please sign in first.")
-    else:
-        # Config
-        # Initialize defaults in session_state
-        if "like_settings" not in st.session_state:
-            st.session_state.like_settings = {}
-
-        # Ensure all keys exist with defaults
-        defaults = {
-            "batch_size": 300,
-            "likes_per_user": 2,
-            "daily_cap": 800,
-            "delay_min": 5,
-            "delay_max": 10,
-        }
-        for key, value in defaults.items():
-            if key not in st.session_state.like_settings:
-                st.session_state.like_settings[key] = value
-
-        col1, col2, col3, col4, col5 = st.columns(5)
-
-        with col1:
-            batch_size = st.number_input("BATCH SIZE", min_value=10, max_value=500, value=st.session_state.like_settings["batch_size"], step=10,
-                help="How many people to like posts from in one run. Start with 50 to test.")
-        with col2:
-            likes_per_user = st.number_input("LIKES PER USER", min_value=1, max_value=5, value=st.session_state.like_settings["likes_per_user"], step=1,
-                help="How many posts to like per person. 2 is the sweet spot — enough to get noticed without being spammy.")
-        with col3:
-            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=1000, value=st.session_state.like_settings["daily_cap"], step=10, key="like_daily_cap",
-                help="Maximum likes per day across all runs. Keeps your account safe from Bluesky's rate limits.")
-        with col4:
-            delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=st.session_state.like_settings["delay_min"], step=1,
-                help="Minimum seconds between likes. Lower is faster, but Bluesky may temporarily block your account if too fast.")
-        with col5:
-            delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=st.session_state.like_settings["delay_max"], step=1,
-                help="Maximum seconds between likes. A random delay is picked between min and max to look natural.")
-
-        # Persist settings
-        st.session_state.like_settings = {
-            "batch_size": batch_size,
-            "likes_per_user": likes_per_user,
-            "daily_cap": daily_cap,
-            "delay_min": delay_min,
-            "delay_max": delay_max,
-        }
-
-        # Get runner reference
-        runner = st.session_state.like_runner
-
-        # Action buttons — same position, changes based on state
-        col_btn, col_spacer = st.columns([1, 3])
-        with col_btn:
-            if runner.running:
-                st.button("RUNNING...", key="like_running", use_container_width=True, disabled=True)
-                if st.button("STOP", key="stop_like", use_container_width=True, type="primary"):
-                    runner.stop()
-                    st.rerun()
-            else:
-                run_clicked = st.button("RUN LIKE", key="run_like", use_container_width=True)
-
-        # Live log
-        status_class = "live" if runner.running else "idle"
-        status_label = "LIVE" if runner.running else "IDLE"
-        st.markdown(f"""
-        <div class="panel" style="margin-top:20px">
-            <div class="panel-header">
-                <span class="title">Live Output</span>
-                <span class="status {status_class}">{status_label}</span>
+    render_bot_page(
+        page_title="Like",
+        page_description="Like posts from non-followers randomly to get their attention",
+        runner=st.session_state.like_runner,
+        settings_key="like_settings",
+        bot_func=like_bot_run,
+        settings_fields=[
+            {"key": "batch_size", "label": "BATCH SIZE", "min": 10, "max": 500, "default": 300, "step": 10,
+             "help": "How many people to like posts from in one run. Start with 50 to test."},
+            {"key": "likes_per_user", "label": "LIKES PER USER", "min": 1, "max": 5, "default": 2, "step": 1,
+             "help": "How many posts to like per person. 2 is the sweet spot — enough to get noticed without being spammy."},
+            {"key": "daily_cap", "label": "DAILY CAP", "min": 10, "max": 1000, "default": 800, "step": 10, "input_key": "like_daily_cap",
+             "help": "Maximum likes per day across all runs. Keeps your account safe from Bluesky's rate limits."},
+            {"key": "delay_min", "label": "MIN DELAY (sec)", "min": 1, "max": 60, "default": 5, "step": 1,
+             "help": "Minimum seconds between likes. Lower is faster, but Bluesky may temporarily block your account if too fast."},
+            {"key": "delay_max", "label": "MAX DELAY (sec)", "min": 1, "max": 60, "default": 10, "step": 1,
+             "help": "Maximum seconds between likes. A random delay is picked between min and max to look natural."},
+        ],
+        build_bot_args=lambda s, t, e: (
+            [account, s["batch_size"], s["likes_per_user"], s["delay_min"], s["delay_max"]],
+            {}
+        ),
+        build_retry_args=lambda s: (s["account"], s["batch_size"], s["likes_per_user"], s["delay_min"], s["delay_max"]),
+        format_results=lambda r: f"Like bot complete: {sum(x['liked'] for x in r)} liked, {sum(x['skipped'] for x in r)} skipped, {sum(x['errors'] for x in r)} errors",
+        notification_name="Like bot",
+        empty_state_html="""
+        <div style="background:#111;border:1px solid #222;border-radius:2px;padding:24px;font-family:'JetBrains Mono',monospace">
+            <div style="font-size:13px;color:#c8c8c8;margin-bottom:12px">Ready to run</div>
+            <div style="font-size:12px;color:#888;line-height:1.8">
+                This bot likes posts from people who don't follow you yet — a low-risk way to get on their radar.<br><br>
+                <strong style="color:#c8c8c8">Recommended first run:</strong><br>
+                · Batch size: 50 (start small to test)<br>
+                · Likes per user: 2<br>
+                · Daily cap: 200<br>
+                · Delay: 5–10 sec<br><br>
+                <span style="color:#666">Click RUN LIKE above to start.</span>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+    )
 
-        log_placeholder = st.empty()
+elif page == "FOLLOW":
+    from bots.follow_bot import follow_bot_run
+    from pages.bot_page import render_bot_page
 
-        # Run the bot (when RUN button clicked)
-        if not runner.running and run_clicked:
-            # Check if another bot is running
-            if any_bot_running():
-                running_bot = get_running_bot_name()
-                st.error(f"Cannot start Like — {running_bot} is already running. Stop it first or wait for it to finish.")
-            # Validate delays
-            elif delay_min > delay_max:
-                st.error("Min delay must be <= max delay")
-            else:
-                # Start bot in background thread
-                account = [{"handle": st.session_state.handle, "client": st.session_state.get("client"), "enabled": True}]
-                # Store settings for retry
-                st.session_state.like_settings = {
-                    "account": account,
-                    "batch_size": batch_size,
-                    "likes_per_user": likes_per_user,
-                    "delay_min": delay_min,
-                    "delay_max": delay_max,
-                }
-                runner.start(
-                    like_bot_run,
-                    account,
-                    batch_size,
-                    likes_per_user,
-                    delay_min,
-                    delay_max,
-                )
-                st.rerun()
-
-        # Bot is running - show logs with auto-refresh fragment
-        if runner.running:
-            live_log_panel(runner)
-
-        # Bot finished - show results
-        if not runner.running:
-            # Check for results
-            results = runner.get_results()
-            error = runner.get_error()
-
-            if error:
-                error_msg = error.lower()
-                if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
-                    st.error(f"Authentication failed: {error}. Sign out and sign back in to update your credentials.")
-                elif "rate" in error_msg or "429" in error_msg:
-                    st.error(f"Rate limited: {error}. Wait a few minutes and try again.")
-                elif "timeout" in error_msg or "connection" in error_msg:
-                    st.error(f"Network error: {error}. Check your connection and try again.")
-                else:
-                    st.error(f"Bot error: {error}")
-                # Retry button
-                if st.button("RETRY", key="retry_like"):
-                    settings = st.session_state.get("like_settings", {})
-                    if settings:
-                        runner.start(
-                            like_bot_run,
-                            settings["account"],
-                            settings["batch_size"],
-                            settings["likes_per_user"],
-                            settings["delay_min"],
-                            settings["delay_max"],
-                        )
-                        st.rerun()
-                else:
-                    runner.clear()
-            elif results:
-                total_liked = sum(r["liked"] for r in results)
-                total_skipped = sum(r["skipped"] for r in results)
-                total_errors = sum(r["errors"] for r in results)
-                if runner.stop_requested:
-                    st.warning(f"Like bot stopped: {total_liked} liked, {total_skipped} skipped, {total_errors} errors")
-                    send_notification("bluesky-engine", f"Like bot stopped — {total_liked} liked")
-                else:
-                    st.success(f"Like bot complete: {total_liked} liked, {total_skipped} skipped, {total_errors} errors")
-                    send_notification("bluesky-engine", f"Like bot complete — {total_liked} liked, {total_skipped} skipped")
-                runner.clear()
-
-            # Show existing log
-            logs = runner.get_logs()
-            if logs:
-                log_text = "\n".join(logs[-50:])
-                log_placeholder.code(log_text, language="bash")
-            else:
-                log_placeholder.markdown("""
-                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:24px;font-family:'JetBrains Mono',monospace">
-                    <div style="font-size:13px;color:#c8c8c8;margin-bottom:12px">👋 Ready to run</div>
-                    <div style="font-size:12px;color:#888;line-height:1.8">
-                        This bot likes posts from people who don't follow you yet — a low-risk way to get on their radar.<br><br>
-                        <strong style="color:#c8c8c8">Recommended first run:</strong><br>
-                        • Batch size: 50 (start small to test)<br>
-                        • Likes per user: 2<br>
-                        • Daily cap: 200<br>
-                        • Delay: 5–10 sec<br><br>
-                        <span style="color:#666">Click RUN LIKE above to start.</span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-
-# =============================================================
-# FOLLOW TAB (Placeholder)
-# =============================================================
-
-if page == "FOLLOW":
-    st.markdown("""
-    <div style="margin-bottom:20px">
-        <span style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-weight:600">Follow</span>
-        <br>
-        <span style="font-size:13px;color:#888">Build your audience by following relevant accounts</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Check if account is configured
-    if not st.session_state.verified:
-        st.warning("Please sign in first.")
-    else:
-        # Show account with target input
-        st.markdown("""
-        <div style="margin-bottom:10px">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Assign Target Account</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Target input
-        target = st.text_input(
-            "TARGET ACCOUNT",
-            value=st.session_state.target,
-            placeholder="karpathy.bsky.social",
-            key="follow_target",
+    def build_follow_args(settings, target, exemptions):
+        valid_accounts = [{
+            "handle": st.session_state.handle,
+            "client": st.session_state.get("client"),
+            "target": target,
+            "enabled": True
+        }]
+        return (
+            [valid_accounts, settings["pull_limit"], settings["daily_cap"],
+             settings["delay_min"], settings["delay_max"], settings["auto_like_count"]],
+            {}
         )
-        st.session_state.target = target
 
-        # Config
-        st.markdown("""
-        <div style="margin-top:20px;margin-bottom:10px">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Bot Settings</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Initialize defaults in session_state
-        if "grow_settings" not in st.session_state:
-            st.session_state.grow_settings = {}
-
-        # Ensure all keys exist with defaults
-        defaults = {
-            "pull_limit": 300,
-            "daily_cap": 150,
-            "delay_min": 5,
-            "delay_max": 15,
-            "auto_like_count": 2,
-        }
-        for key, value in defaults.items():
-            if key not in st.session_state.grow_settings:
-                st.session_state.grow_settings[key] = value
-
-        col1, col2, col3, col4, col5 = st.columns(5)
-
-        with col1:
-            pull_limit = st.number_input("PULL LIMIT", min_value=10, max_value=500, value=st.session_state.grow_settings["pull_limit"], step=10,
-                help="How many of the target's followers to review before selecting who to follow. 200 is a good start.")
-        with col2:
-            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=200, value=st.session_state.grow_settings["daily_cap"], step=5,
-                help="Maximum accounts to follow in one run. Keeps your account safe from Bluesky's rate limits.")
-        with col3:
-            follow_delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=st.session_state.grow_settings["delay_min"], step=1, key="follow_delay_min",
-                help="Minimum seconds between follows. Lower is faster, but Bluesky may temporarily block your account if too fast.")
-        with col4:
-            follow_delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=st.session_state.grow_settings["delay_max"], step=1, key="follow_delay_max",
-                help="Maximum seconds between follows. A random delay is picked between min and max to look natural.")
-        with col5:
-            auto_like_count = st.number_input("AUTO-LIKE POSTS", min_value=0, max_value=5, value=st.session_state.grow_settings["auto_like_count"], step=1,
-                help="Automatically like posts from each account you follow. Makes your follow feel genuine and increases follow-back chance. 0 = disabled.")
-
-        # Persist settings
-        st.session_state.grow_settings = {
-            "pull_limit": pull_limit,
-            "daily_cap": daily_cap,
-            "delay_min": follow_delay_min,
-            "delay_max": follow_delay_max,
-            "auto_like_count": auto_like_count,
-        }
-
-        # Get runner reference
-        runner = st.session_state.follow_runner
-
-        # Action buttons — same position, changes based on state
-        col_btn, col_spacer = st.columns([1, 3])
-        with col_btn:
-            if runner.running:
-                st.button("RUNNING...", key="follow_running", use_container_width=True, disabled=True)
-                if st.button("STOP", key="stop_follow", use_container_width=True, type="primary"):
-                    runner.stop()
-                    st.rerun()
-            else:
-                follow_run_clicked = st.button("RUN FOLLOW", key="run_follow", use_container_width=True)
-
-        # Live log
-        status_class = "live" if runner.running else "idle"
-        status_label = "LIVE" if runner.running else "IDLE"
-        st.markdown(f"""
-        <div class="panel" style="margin-top:20px">
-            <div class="panel-header">
-                <span class="title">Live Output</span>
-                <span class="status {status_class}">{status_label}</span>
+    render_bot_page(
+        page_title="Follow",
+        page_description="Build your audience by following relevant accounts",
+        runner=st.session_state.follow_runner,
+        settings_key="grow_settings",
+        bot_func=follow_bot_run,
+        settings_fields=[
+            {"key": "pull_limit", "label": "PULL LIMIT", "min": 10, "max": 500, "default": 300, "step": 10,
+             "help": "How many of the target's followers to review before selecting who to follow. 200 is a good start."},
+            {"key": "daily_cap", "label": "DAILY CAP", "min": 10, "max": 200, "default": 150, "step": 5,
+             "help": "Maximum accounts to follow in one run. Keeps your account safe from Bluesky's rate limits."},
+            {"key": "delay_min", "label": "MIN DELAY (sec)", "min": 1, "max": 60, "default": 5, "step": 1, "input_key": "follow_delay_min",
+             "help": "Minimum seconds between follows. Lower is faster, but Bluesky may temporarily block your account if too fast."},
+            {"key": "delay_max", "label": "MAX DELAY (sec)", "min": 1, "max": 60, "default": 15, "step": 1, "input_key": "follow_delay_max",
+             "help": "Maximum seconds between follows. A random delay is picked between min and max to look natural."},
+            {"key": "auto_like_count", "label": "AUTO-LIKE POSTS", "min": 0, "max": 5, "default": 2, "step": 1,
+             "help": "Automatically like posts from each account you follow. Makes your follow feel genuine and increases follow-back chance. 0 = disabled."},
+        ],
+        build_bot_args=build_follow_args,
+        build_retry_args=lambda s: (s["accounts"], s["pull_limit"], s["daily_cap"], s["delay_min"], s["delay_max"], s["auto_like_count"]),
+        format_results=lambda r: f"Follow bot complete: {sum(x['followed'] for x in r)} followed, {sum(x['liked'] for x in r)} liked, {sum(x['errors'] for x in r)} errors",
+        notification_name="Follow bot",
+        has_target=True,
+        empty_state_html="""
+        <div style="background:#111;border:1px solid #222;border-radius:2px;padding:24px;font-family:'JetBrains Mono',monospace">
+            <div style="font-size:13px;color:#c8c8c8;margin-bottom:12px">Ready to run</div>
+            <div style="font-size:12px;color:#888;line-height:1.8">
+                This bot follows followers of a target account. Pick someone in your niche with an engaged audience.<br><br>
+                <strong style="color:#c8c8c8">Recommended first run:</strong><br>
+                · Target: someone with 1K–50K followers in your niche<br>
+                · Pull limit: 100<br>
+                · Daily cap: 50 (start conservative)<br>
+                · Auto-like: 2 (likes posts after following)<br><br>
+                <span style="color:#666">Set a target account above, then click RUN FOLLOW.</span>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+    )
 
-        follow_log_placeholder = st.empty()
+elif page == "UNFOLLOW":
+    from bots.unfollow_bot import unfollow_bot_run
+    from pages.bot_page import render_bot_page
 
-        # Run the bot (when RUN button clicked)
-        if not runner.running and follow_run_clicked:
-            # Check if another bot is running
-            if any_bot_running():
-                running_bot = get_running_bot_name()
-                st.error(f"Cannot start Follow — {running_bot} is already running. Stop it first or wait for it to finish.")
-            # Validate delays
-            elif follow_delay_min > follow_delay_max:
-                st.error("Min delay must be <= max delay")
-            else:
-                # Validate target
-                target = st.session_state.target.strip()
-                if not target:
-                    st.error("No target configured. Add a target account.")
-                elif "." not in target:
-                    st.error(f"Invalid target @{target}. Must be a full handle like 'karpathy.bsky.social'")
-                else:
-                    # Start bot in background thread
-                    valid_accounts = [{
-                        "handle": st.session_state.handle,
-                        "client": st.session_state.get("client"),
-                        "target": target,
-                        "enabled": True
-                    }]
-                    # Store settings for retry
-                    st.session_state.follow_settings = {
-                        "accounts": valid_accounts,
-                        "pull_limit": pull_limit,
-                        "daily_cap": daily_cap,
-                        "delay_min": follow_delay_min,
-                        "delay_max": follow_delay_max,
-                        "auto_like_count": auto_like_count,
-                    }
-                    runner.start(
-                        follow_bot_run,
-                        valid_accounts,
-                        pull_limit,
-                        daily_cap,
-                        follow_delay_min,
-                        follow_delay_max,
-                        auto_like_count,
-                    )
-                    st.rerun()
-
-        # Bot is running - show logs with auto-refresh fragment
-        if runner.running:
-            live_log_panel(runner)
-
-        # Bot finished - show results
-        if not runner.running:
-            # Check for results
-            results = runner.get_results()
-            error = runner.get_error()
-
-            if error:
-                error_msg = error.lower()
-                if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
-                    st.error(f"Authentication failed: {error}. Sign out and sign back in to update your credentials.")
-                elif "rate" in error_msg or "429" in error_msg:
-                    st.error(f"Rate limited: {error}. Wait a few minutes and try again.")
-                elif "timeout" in error_msg or "connection" in error_msg:
-                    st.error(f"Network error: {error}. Check your connection and try again.")
-                else:
-                    st.error(f"Bot error: {error}")
-                # Retry button
-                if st.button("RETRY", key="retry_follow"):
-                    settings = st.session_state.get("follow_settings", {})
-                    if settings:
-                        runner.start(
-                            follow_bot_run,
-                            settings["accounts"],
-                            settings["pull_limit"],
-                            settings["daily_cap"],
-                            settings["delay_min"],
-                            settings["delay_max"],
-                            settings["auto_like_count"],
-                        )
-                        st.rerun()
-                else:
-                    runner.clear()
-            elif results:
-                total_followed = sum(r["followed"] for r in results)
-                total_liked = sum(r["liked"] for r in results)
-                total_errors = sum(r["errors"] for r in results)
-                if runner.stop_requested:
-                    st.warning(f"Follow bot stopped: {total_followed} followed, {total_liked} liked, {total_errors} errors")
-                    send_notification("bluesky-engine", f"Follow bot stopped — {total_followed} followed")
-                else:
-                    st.success(f"Follow bot complete: {total_followed} followed, {total_liked} liked, {total_errors} errors")
-                    send_notification("bluesky-engine", f"Follow bot complete — {total_followed} followed, {total_liked} liked")
-                runner.clear()
-
-            # Show existing log
-            logs = runner.get_logs()
-            if logs:
-                log_text = "\n".join(logs[-50:])
-                follow_log_placeholder.code(log_text, language="bash")
-            else:
-                follow_log_placeholder.markdown("""
-                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:24px;font-family:'JetBrains Mono',monospace">
-                    <div style="font-size:13px;color:#c8c8c8;margin-bottom:12px">👋 Ready to run</div>
-                    <div style="font-size:12px;color:#888;line-height:1.8">
-                        This bot follows followers of a target account. Pick someone in your niche with an engaged audience.<br><br>
-                        <strong style="color:#c8c8c8">Recommended first run:</strong><br>
-                        • Target: someone with 1K–50K followers in your niche<br>
-                        • Pull limit: 100<br>
-                        • Daily cap: 50 (start conservative)<br>
-                        • Auto-like: 2 (likes posts after following)<br><br>
-                        <span style="color:#666">Set a target account above, then click RUN FOLLOW.</span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-
-# =============================================================
-# UNFOLLOW TAB (Placeholder)
-# =============================================================
-
-if page == "UNFOLLOW":
-    st.markdown("""
-    <div style="margin-bottom:20px">
-        <span style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-weight:600">Unfollow</span>
-        <br>
-        <span style="font-size:13px;color:#888">Unfollow accounts that don't follow you back after X days</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Check if account is configured
-    if not st.session_state.verified:
-        st.warning("Please sign in first.")
-    else:
-        # Settings
-        st.markdown("""
-        <div style="margin-bottom:10px">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Settings</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Initialize defaults in session_state
-        if "cleanup_settings" not in st.session_state:
-            st.session_state.cleanup_settings = {}
-
-        # Ensure all keys exist with defaults
-        defaults = {
-            "days_threshold": 30,
-            "daily_cap": 200,
-            "delay_min": 5,
-            "delay_max": 15,
-        }
-        for key, value in defaults.items():
-            if key not in st.session_state.cleanup_settings:
-                st.session_state.cleanup_settings[key] = value
-
-        col1, col2, col3, col4 = st.columns(4)
-
-        with col1:
-            days_threshold = st.number_input("DAYS THRESHOLD", min_value=1, max_value=365, value=st.session_state.cleanup_settings["days_threshold"], step=1,
-                help="Wait this many days before unfollowing non-followers. Gives people time to follow back. 30 days is a safe default.")
-        with col2:
-            daily_cap = st.number_input("DAILY CAP", min_value=10, max_value=300, value=st.session_state.cleanup_settings["daily_cap"], step=5,
-                key="unfollow_daily_cap", help="Maximum accounts to unfollow in one run. Keeps your account safe from Bluesky's rate limits.")
-        with col3:
-            unfollow_delay_min = st.number_input("MIN DELAY (sec)", min_value=1, max_value=60, value=st.session_state.cleanup_settings["delay_min"], step=1,
-                key="unfollow_delay_min", help="Minimum seconds between unfollows. Lower is faster, but Bluesky may temporarily block your account if too fast.")
-        with col4:
-            unfollow_delay_max = st.number_input("MAX DELAY (sec)", min_value=1, max_value=60, value=st.session_state.cleanup_settings["delay_max"], step=1,
-                key="unfollow_delay_max", help="Maximum seconds between unfollows. A random delay is picked between min and max to look natural.")
-
-        # Persist settings
-        st.session_state.cleanup_settings = {
-            "days_threshold": days_threshold,
-            "daily_cap": daily_cap,
-            "delay_min": unfollow_delay_min,
-            "delay_max": unfollow_delay_max,
-        }
-
-        # Exemptions
-        st.markdown("""
-        <div style="margin-top:20px;margin-bottom:10px">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Exemptions</span>
-            <span style="font-size:12px;color:#888;margin-left:10px">Accounts to never unfollow (one per line)</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-        exemptions_text = st.text_area(
-            "EXEMPTIONS",
-            value="",
-            height=100,
-            key="unfollow_exemptions",
-            label_visibility="collapsed",
-            placeholder="karpathy.bsky.social\nelonmusk.bsky.social\nnaval.bsky.social",
+    def build_unfollow_args(settings, target, exemptions):
+        account = [{"handle": st.session_state.handle, "client": st.session_state.get("client"), "enabled": True}]
+        return (
+            [account, settings["days_threshold"], settings["daily_cap"],
+             settings["delay_min"], settings["delay_max"], exemptions],
+            {}
         )
-        exemptions = [e.strip() for e in exemptions_text.split("\n") if e.strip()]
 
-        # Get runner reference
-        runner = st.session_state.unfollow_runner
-
-        # Action buttons — same position, changes based on state
-        col_btn, col_spacer = st.columns([1, 3])
-        with col_btn:
-            if runner.running:
-                st.button("RUNNING...", key="unfollow_running", use_container_width=True, disabled=True)
-                if st.button("STOP", key="stop_unfollow", use_container_width=True, type="primary"):
-                    runner.stop()
-                    st.rerun()
-            else:
-                unfollow_clicked = st.button("RUN UNFOLLOW", key="run_unfollow", use_container_width=True)
-
-        # Live log
-        status_class = "live" if runner.running else "idle"
-        status_label = "LIVE" if runner.running else "IDLE"
-        st.markdown(f"""
-        <div class="panel" style="margin-top:20px">
-            <div class="panel-header">
-                <span class="title">Live Output</span>
-                <span class="status {status_class}">{status_label}</span>
+    render_bot_page(
+        page_title="Unfollow",
+        page_description="Unfollow accounts that don't follow you back after X days",
+        runner=st.session_state.unfollow_runner,
+        settings_key="cleanup_settings",
+        bot_func=unfollow_bot_run,
+        settings_fields=[
+            {"key": "days_threshold", "label": "DAYS THRESHOLD", "min": 1, "max": 365, "default": 30, "step": 1,
+             "help": "Wait this many days before unfollowing non-followers. Gives people time to follow back. 30 days is a safe default."},
+            {"key": "daily_cap", "label": "DAILY CAP", "min": 10, "max": 300, "default": 200, "step": 5, "input_key": "unfollow_daily_cap",
+             "help": "Maximum accounts to unfollow in one run. Keeps your account safe from Bluesky's rate limits."},
+            {"key": "delay_min", "label": "MIN DELAY (sec)", "min": 1, "max": 60, "default": 5, "step": 1, "input_key": "unfollow_delay_min",
+             "help": "Minimum seconds between unfollows. Lower is faster, but Bluesky may temporarily block your account if too fast."},
+            {"key": "delay_max", "label": "MAX DELAY (sec)", "min": 1, "max": 60, "default": 15, "step": 1, "input_key": "unfollow_delay_max",
+             "help": "Maximum seconds between unfollows. A random delay is picked between min and max to look natural."},
+        ],
+        build_bot_args=build_unfollow_args,
+        build_retry_args=lambda s: (s["account"], s["days_threshold"], s["daily_cap"], s["delay_min"], s["delay_max"], s["exemptions"]),
+        format_results=lambda r: f"Unfollow bot complete: {sum(x['unfollowed'] for x in r)} unfollowed, {sum(x['skipped'] for x in r)} skipped, {sum(x['errors'] for x in r)} errors",
+        notification_name="Unfollow bot",
+        has_exemptions=True,
+        empty_state_html="""
+        <div style="background:#111;border:1px solid #222;border-radius:2px;padding:24px;font-family:'JetBrains Mono',monospace">
+            <div style="font-size:13px;color:#c8c8c8;margin-bottom:12px">Ready to run</div>
+            <div style="font-size:12px;color:#888;line-height:1.8">
+                This bot unfollows accounts that haven't followed you back after X days. Keeps your follow ratio healthy.<br><br>
+                <strong style="color:#c8c8c8">Recommended first run:</strong><br>
+                · Days threshold: 30 (give people time to follow back)<br>
+                · Daily cap: 100<br>
+                · Delay: 5–15 sec<br>
+                · Add exemptions for accounts you never want to unfollow<br><br>
+                <span style="color:#666">Click RUN UNFOLLOW above to start.</span>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+    )
 
-        unfollow_log_placeholder = st.empty()
-
-        # Run the bot (when RUN button clicked)
-        if not runner.running and unfollow_clicked:
-            # Check if another bot is running
-            if any_bot_running():
-                running_bot = get_running_bot_name()
-                st.error(f"Cannot start Unfollow — {running_bot} is already running. Stop it first or wait for it to finish.")
-            # Validate delays
-            elif unfollow_delay_min > unfollow_delay_max:
-                st.error("Min delay must be <= max delay")
-            else:
-                # Start bot in background thread
-                account = [{"handle": st.session_state.handle, "client": st.session_state.get("client"), "enabled": True}]
-                # Store settings for retry
-                st.session_state.unfollow_settings = {
-                    "account": account,
-                    "days_threshold": days_threshold,
-                    "daily_cap": daily_cap,
-                    "delay_min": unfollow_delay_min,
-                    "delay_max": unfollow_delay_max,
-                    "exemptions": exemptions,
-                }
-                runner.start(
-                    unfollow_bot_run,
-                    account,
-                    days_threshold,
-                    daily_cap,
-                    unfollow_delay_min,
-                    unfollow_delay_max,
-                    exemptions,
-                )
-                st.rerun()
-
-        # Bot is running - show logs with auto-refresh fragment
-        if runner.running:
-            live_log_panel(runner)
-
-        # Bot finished - show results
-        if not runner.running:
-            # Check for results
-            results = runner.get_results()
-            error = runner.get_error()
-
-            if error:
-                error_msg = error.lower()
-                if "auth" in error_msg or "invalid" in error_msg or "password" in error_msg:
-                    st.error(f"Authentication failed: {error}. Sign out and sign back in to update your credentials.")
-                elif "rate" in error_msg or "429" in error_msg:
-                    st.error(f"Rate limited: {error}. Wait a few minutes and try again.")
-                elif "timeout" in error_msg or "connection" in error_msg:
-                    st.error(f"Network error: {error}. Check your connection and try again.")
-                else:
-                    st.error(f"Bot error: {error}")
-                # Retry button
-                if st.button("RETRY", key="retry_unfollow"):
-                    settings = st.session_state.get("unfollow_settings", {})
-                    if settings:
-                        runner.start(
-                            unfollow_bot_run,
-                            settings["account"],
-                            settings["days_threshold"],
-                            settings["daily_cap"],
-                            settings["delay_min"],
-                            settings["delay_max"],
-                            settings["exemptions"],
-                        )
-                        st.rerun()
-                else:
-                    runner.clear()
-            elif results:
-                total_unfollowed = sum(r["unfollowed"] for r in results)
-                total_skipped = sum(r["skipped"] for r in results)
-                total_errors = sum(r["errors"] for r in results)
-                if runner.stop_requested:
-                    st.warning(f"Unfollow bot stopped: {total_unfollowed} unfollowed, {total_skipped} skipped, {total_errors} errors")
-                    send_notification("bluesky-engine", f"Unfollow bot stopped — {total_unfollowed} unfollowed")
-                else:
-                    st.success(f"Unfollow bot complete: {total_unfollowed} unfollowed, {total_skipped} skipped, {total_errors} errors")
-                    send_notification("bluesky-engine", f"Unfollow bot complete — {total_unfollowed} unfollowed, {total_skipped} skipped")
-                runner.clear()
-
-            # Show existing log
-            logs = runner.get_logs()
-            if logs:
-                log_text = "\n".join(logs[-50:])
-                unfollow_log_placeholder.code(log_text, language="bash")
-            else:
-                unfollow_log_placeholder.markdown("""
-                <div style="background:#111;border:1px solid #222;border-radius:2px;padding:24px;font-family:'JetBrains Mono',monospace">
-                    <div style="font-size:13px;color:#c8c8c8;margin-bottom:12px">👋 Ready to run</div>
-                    <div style="font-size:12px;color:#888;line-height:1.8">
-                        This bot unfollows accounts that haven't followed you back after X days. Keeps your follow ratio healthy.<br><br>
-                        <strong style="color:#c8c8c8">Recommended first run:</strong><br>
-                        • Days threshold: 30 (give people time to follow back)<br>
-                        • Daily cap: 100<br>
-                        • Delay: 5–15 sec<br>
-                        • Add exemptions for accounts you never want to unfollow<br><br>
-                        <span style="color:#666">Click RUN UNFOLLOW above to start.</span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-
-# =============================================================
-# EXPORT TAB
-# =============================================================
-
-if page == "EXPORT":
-    st.markdown("""
-    <div style="margin-bottom:20px">
-        <span style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#00d4ff;font-weight:600">Export</span>
-        <br>
-        <span style="font-size:13px;color:#888">Export follower profiles for AI analysis</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Check if account is configured
-    if not st.session_state.verified:
-        st.warning("Please sign in first.")
-    else:
-        st.markdown("""
-        <div style="margin-bottom:16px">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Export Follower Profiles</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("""
-        <div style="font-size:13px;color:#888;margin-bottom:20px">
-            Extract all follower profiles (handle, bio, followers, following, etc.) and download as JSON.
-            <br>Use with Claude, ChatGPT, or other AI tools to analyze your audience.
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Export button
-        if st.button("EXPORT FOLLOWER PROFILES", use_container_width=True):
-            try:
-                client = st.session_state.client
-                handle = st.session_state.handle
-
-                # Fetch all followers with live progress
-                followers = []
-                cursor = None
-                progress_placeholder = st.empty()
-
-                while True:
-                    params = {"actor": handle, "limit": 100}
-                    if cursor:
-                        params["cursor"] = cursor
-                    result = client.app.bsky.graph.get_followers(params)
-
-                    for user in result.followers:
-                        followers.append({
-                            "handle": user.handle,
-                            "display_name": user.display_name or "",
-                            "bio": user.description or "",
-                        })
-
-                    progress_placeholder.markdown(f"""
-                    <div style="padding:8px 12px;background:#111;border:1px solid #222;border-radius:2px;font-size:12px;color:#888;font-family:'JetBrains Mono',monospace">
-                        Fetching profiles... <strong style="color:#00d4ff">{len(followers)}</strong> collected
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    cursor = result.cursor
-                    if not cursor:
-                        break
-
-                progress_placeholder.empty()
-
-                # Save to JSON
-                import json
-                from datetime import datetime
-
-                export_data = {
-                    "exported_at": datetime.now().isoformat(),
-                    "account": handle,
-                    "total_followers": len(followers),
-                    "followers": followers,
-                }
-
-                json_str = json.dumps(export_data, indent=2, ensure_ascii=False)
-
-                # Show stats
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric("Total Followers", len(followers))
-                with col2:
-                    bios_count = sum(1 for f in followers if f["bio"])
-                    st.metric("With Bio", bios_count)
-
-                # Download button
-                st.download_button(
-                    label="DOWNLOAD JSON",
-                    data=json_str,
-                    file_name=f"followers_{handle}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                    mime="application/json",
-                    use_container_width=True,
-                )
-
-                # Preview
-                st.markdown("""
-                <div style="margin-top:20px;margin-bottom:10px">
-                    <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888">Preview (first 5)</span>
-                </div>
-                """, unsafe_allow_html=True)
-
-                for f in followers[:5]:
-                    st.markdown(f"""
-                    <div style="background:#111;border:1px solid #222;border-radius:2px;padding:12px;margin-bottom:8px">
-                        <div style="font-size:13px;color:#c8c8c8;font-weight:600">@{f['handle']}</div>
-                        <div style="font-size:12px;color:#888;margin-top:4px">{f['display_name']}</div>
-                        <div style="font-size:12px;color:#666;margin-top:4px">{f['bio'][:100]}{'...' if len(f['bio']) > 100 else ''}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-            except Exception as e:
-                st.error(f"Failed to export profiles: {str(e)[:200]}")
+elif page == "EXPORT":
+    from pages.export import render as render_export
+    render_export()
