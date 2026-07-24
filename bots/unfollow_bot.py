@@ -9,6 +9,7 @@ import random
 import time
 from datetime import datetime, timedelta, timezone
 from utils.pagination import paginate_follows, paginate_followers, paginate_records
+from core.callbacks import BotCallbacks
 
 from atproto import Client
 
@@ -36,18 +37,10 @@ def unfollow_bot_run(accounts, days_threshold, daily_cap, delay_min, delay_max, 
     Returns:
         list of result dicts
     """
-    def log(line):
-        if log_callback:
-            log_callback(line)
-
-    def should_stop():
-        if stop_check:
-            return stop_check()
-        return False
-
-    def update_progress(completed, total):
-        if progress_callback:
-            progress_callback(completed, total)
+    cb = BotCallbacks(log_callback=log_callback, stop_check=stop_check, progress_callback=progress_callback)
+    log = cb.log
+    should_stop = cb.should_stop
+    update_progress = cb.update_progress
 
     enabled = [a for a in accounts if a.get("enabled", True)]
 
@@ -90,18 +83,10 @@ def _run_single_account(account, days_threshold, daily_cap, delay_min, delay_max
     Returns:
         dict with handle, unfollowed, skipped, errors
     """
-    def log(line):
-        if log_callback:
-            log_callback(line)
-
-    def should_stop():
-        if stop_check:
-            return stop_check()
-        return False
-
-    def update_progress(completed, total):
-        if progress_callback:
-            progress_callback(completed, total)
+    cb = BotCallbacks(log_callback=log_callback, stop_check=stop_check, progress_callback=progress_callback)
+    log = cb.log
+    should_stop = cb.should_stop
+    update_progress = cb.update_progress
 
     handle = account["handle"]
     password = account.get("password", "")
@@ -236,9 +221,8 @@ def get_unfollow_preview(accounts, days_threshold, exemptions, log_callback=None
     Returns:
         list of dicts with handle, eligible_count, total_non_followers
     """
-    def log(line):
-        if log_callback:
-            log_callback(line)
+    cb = BotCallbacks(log_callback=log_callback)
+    log = cb.log
 
     results = []
 

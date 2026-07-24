@@ -9,6 +9,7 @@ import random
 import time
 from datetime import datetime
 from utils.pagination import paginate_follows, paginate_followers
+from core.callbacks import BotCallbacks
 
 from atproto import Client
 
@@ -89,18 +90,10 @@ def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_ma
     Returns:
         dict with handle, liked, skipped, errors
     """
-    def log(line):
-        if log_callback:
-            log_callback(line)
-
-    def should_stop():
-        if stop_check:
-            return stop_check()
-        return False
-
-    def update_progress(completed, total):
-        if progress_callback:
-            progress_callback(completed, total)
+    cb = BotCallbacks(log_callback=log_callback, stop_check=stop_check, progress_callback=progress_callback)
+    log = cb.log
+    should_stop = cb.should_stop
+    update_progress = cb.update_progress
 
     handle = account["handle"]
     password = account.get("password", "")
@@ -190,14 +183,9 @@ def _like_user_posts(client, user_did, user_handle, max_likes, delay_min, delay_
     Returns:
         int: number of posts liked
     """
-    def log(line):
-        if log_callback:
-            log_callback(line)
-
-    def should_stop():
-        if stop_check:
-            return stop_check()
-        return False
+    cb = BotCallbacks(log_callback=log_callback, stop_check=stop_check)
+    log = cb.log
+    should_stop = cb.should_stop
 
     liked = 0
 
