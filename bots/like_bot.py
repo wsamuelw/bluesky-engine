@@ -117,9 +117,9 @@ def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_ma
     else:
         log(f"[{ts()}] OK   [{handle}] Using cached client")
 
-    # Pull following
+    # Pull following (store DID → handle for logging)
     log(f"[{ts()}] INFO [{handle}] Pulling following list...")
-    following = set()
+    following = {}  # DID → handle
     cursor = None
     while True:
         params = {"actor": handle, "limit": 100}
@@ -127,7 +127,7 @@ def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_ma
             params["cursor"] = cursor
         result = client.app.bsky.graph.get_follows(params)
         for user in result.follows:
-            following.add(user.did)
+            following[user.did] = user.handle
         cursor = result.cursor
         if not cursor:
             break
@@ -150,7 +150,7 @@ def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_ma
     log(f"[{ts()}] OK   [{handle}] {len(followers)} followers")
 
     # Find non-followers
-    non_followers = following - followers
+    non_followers = set(following.keys()) - followers
     log(f"[{ts()}] OK   [{handle}] {len(non_followers)} non-followers")
 
     if not non_followers:
@@ -177,12 +177,8 @@ def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_ma
         # Update progress
         update_progress(i, len(sample))
 
-        # Fetch handle for logging
-        try:
-            profile_info = client.app.bsky.actor.get_profile({"actor": user_did})
-            user_handle = profile_info.handle
-        except:
-            user_handle = user_did[:20] + "..."
+        # Use stored handle from initial fetch
+        user_handle = following.get(user_did, user_did[:20] + "...")
 
         try:
             l = _like_user_posts(client, user_did, user_handle, likes_per_user, delay_min, delay_max, log_callback, stop_check)

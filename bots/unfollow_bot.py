@@ -119,6 +119,22 @@ def _run_single_account(account, days_threshold, daily_cap, delay_min, delay_max
         profile = client.app.bsky.actor.get_profile({"actor": handle})
         log(f"[{ts()}] OK   [{handle}] Using cached client")
 
+    # Build DID → handle map for logging (avoids per-user API calls)
+    log(f"[{ts()}] INFO [{handle}] Building handle map...")
+    handle_map = {}
+    cursor = None
+    while True:
+        params = {"actor": handle, "limit": 100}
+        if cursor:
+            params["cursor"] = cursor
+        result = client.app.bsky.graph.get_follows(params)
+        for user in result.follows:
+            handle_map[user.did] = user.handle
+        cursor = result.cursor
+        if not cursor:
+            break
+    log(f"[{ts()}] OK   [{handle}] Mapped {len(handle_map)} handles")
+
     # Pull who you follow (with dates from repo records)
     log(f"[{ts()}] INFO [{handle}] Pulling following list with dates...")
 
@@ -151,9 +167,10 @@ def _run_single_account(account, days_threshold, daily_cap, delay_min, delay_max
 
     log(f"[{ts()}] OK   [{handle}] Following {len(following_records)} accounts")
 
-    # Pull your followers
+    # Pull your followers (store DID → handle for logging)
     log(f"[{ts()}] INFO [{handle}] Pulling followers list...")
     followers = set()
+    follower_handles = {}  # DID → handle
     cursor = None
     while True:
         params = {"actor": handle, "limit": 100}
@@ -162,6 +179,7 @@ def _run_single_account(account, days_threshold, daily_cap, delay_min, delay_max
         result = client.app.bsky.graph.get_followers(params)
         for user in result.followers:
             followers.add(user.did)
+            follower_handles[user.did] = user.handle
         cursor = result.cursor
         if not cursor:
             break
@@ -180,7 +198,7 @@ def _run_single_account(account, days_threshold, daily_cap, delay_min, delay_max
             created = datetime.fromisoformat(record["created_at"].replace("Z", "+00:00"))
             if created < cutoff:
                 eligible.append(record)
-        except:
+        except Exception:
             # If date parsing fails, include it
             eligible.append(record)
 
@@ -205,6 +223,7 @@ def _run_single_account(account, days_threshold, daily_cap, delay_min, delay_max
     unfollowed = 0
     skipped = 0
     errors = 0
+    exemption_set = set(e.lower().strip() for e in exemptions if e.strip()) if exemptions else set()
 
     for i, record in enumerate(to_unfollow):
         # Check for stop request
@@ -217,15 +236,11 @@ def _run_single_account(account, days_threshold, daily_cap, delay_min, delay_max
 
         did = record["did"]
 
-        # Get handle for logging and exemption check
-        try:
-            profile_info = client.app.bsky.actor.get_profile({"actor": did})
-            user_handle = profile_info.handle
-        except:
-            user_handle = did[:20] + "..."
+        # Use stored handle from initial fetch
+        user_handle = handle_map.get(did, did[:20] + "...")
 
         # Check exemptions
-        if exemptions and user_handle.lower() in set(e.lower().strip() for e in exemptions if e.strip()):
+        if exemption_set and user_handle.lower() in exemption_set:
             log(f"[{ts()}] SKIP [{handle}] @{user_handle} — exempt")
             skipped += 1
             continue
@@ -326,7 +341,7 @@ def get_unfollow_preview(accounts, days_threshold, exemptions, log_callback=None
                     created = datetime.fromisoformat(record["created_at"].replace("Z", "+00:00"))
                     if created < cutoff:
                         eligible.append(record)
-                except:
+                except Exception:
                     eligible.append(record)
 
             results.append({

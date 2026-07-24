@@ -237,7 +237,7 @@ def _like_recent_posts(client, target_did, max_likes=2):
                 client.like(item.post.uri, item.post.cid)
                 liked += 1
                 time.sleep(random.uniform(1, 3))
-            except:
+            except Exception:
                 pass
     except:
         pass
