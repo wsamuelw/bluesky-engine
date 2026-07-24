@@ -8,6 +8,7 @@ Passes a callback function for live log updates.
 import random
 import time
 from datetime import datetime
+from utils.pagination import paginate_follows, paginate_followers
 
 from atproto import Client
 
@@ -119,34 +120,12 @@ def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_ma
 
     # Pull following (store DID → handle for logging)
     log(f"[{ts()}] INFO [{handle}] Pulling following list...")
-    following = {}  # DID → handle
-    cursor = None
-    while True:
-        params = {"actor": handle, "limit": 100}
-        if cursor:
-            params["cursor"] = cursor
-        result = client.app.bsky.graph.get_follows(params)
-        for user in result.follows:
-            following[user.did] = user.handle
-        cursor = result.cursor
-        if not cursor:
-            break
+    following = {user.did: user.handle for user in paginate_follows(client, handle)}
     log(f"[{ts()}] OK   [{handle}] Following {len(following)} accounts")
 
     # Pull followers
     log(f"[{ts()}] INFO [{handle}] Pulling followers list...")
-    followers = set()
-    cursor = None
-    while True:
-        params = {"actor": handle, "limit": 100}
-        if cursor:
-            params["cursor"] = cursor
-        result = client.app.bsky.graph.get_followers(params)
-        for user in result.followers:
-            followers.add(user.did)
-        cursor = result.cursor
-        if not cursor:
-            break
+    followers = set(user.did for user in paginate_followers(client, handle))
     log(f"[{ts()}] OK   [{handle}] {len(followers)} followers")
 
     # Find non-followers

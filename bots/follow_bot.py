@@ -8,6 +8,7 @@ Passes a callback function for live log updates.
 import random
 import time
 from datetime import datetime
+from utils.pagination import paginate_follows
 
 from atproto import Client
 
@@ -126,18 +127,7 @@ def _run_single_account(account, pull_limit, daily_cap, delay_min, delay_max, au
 
     # Get currently following (to avoid duplicates)
     my_did = profile.did
-    all_following = set()
-    cursor = None
-    while True:
-        params = {"actor": handle, "limit": 100}
-        if cursor:
-            params["cursor"] = cursor
-        result = client.app.bsky.graph.get_follows(params)
-        for user in result.follows:
-            all_following.add(user.did)
-        cursor = result.cursor
-        if not cursor:
-            break
+    all_following = set(user.did for user in paginate_follows(client, handle))
 
     # Pull target's followers
     log(f"[{ts()}] INFO [{handle}] Pulling followers of @{target}...")

@@ -6,6 +6,7 @@ from atproto import Client
 from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from utils.tracker import load_history, get_chart_data
+from utils.pagination import paginate_follows, paginate_followers
 
 
 def _fetch_profile(client: Client, handle: str):
@@ -19,37 +20,13 @@ def _fetch_feed(client: Client, handle: str):
 
 
 def _fetch_all_follows(client: Client, handle: str) -> set:
-    """Fetch all follow DIDs (paginated, limit=100 per request)."""
-    following_set = set()
-    cursor = None
-    while True:
-        params = {"actor": handle, "limit": 100}
-        if cursor:
-            params["cursor"] = cursor
-        result = client.app.bsky.graph.get_follows(params)
-        for user in result.follows:
-            following_set.add(user.did)
-        cursor = result.cursor
-        if not cursor:
-            break
-    return following_set
+    """Fetch all follow DIDs."""
+    return set(user.did for user in paginate_follows(client, handle))
 
 
 def _fetch_all_followers(client: Client, handle: str) -> set:
-    """Fetch all follower DIDs (paginated, limit=100 per request)."""
-    followers_set = set()
-    cursor = None
-    while True:
-        params = {"actor": handle, "limit": 100}
-        if cursor:
-            params["cursor"] = cursor
-        result = client.app.bsky.graph.get_followers(params)
-        for user in result.followers:
-            followers_set.add(user.did)
-        cursor = result.cursor
-        if not cursor:
-            break
-    return followers_set
+    """Fetch all follower DIDs."""
+    return set(user.did for user in paginate_followers(client, handle))
 
 
 def get_stats(handle: str, client: Client) -> dict:

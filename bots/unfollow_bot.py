@@ -8,6 +8,7 @@ Passes a callback function for live log updates.
 import random
 import time
 from datetime import datetime, timedelta, timezone
+from utils.pagination import paginate_follows, paginate_followers, paginate_records
 
 from atproto import Client
 
@@ -121,68 +122,27 @@ def _run_single_account(account, days_threshold, daily_cap, delay_min, delay_max
 
     # Build DID → handle map for logging (avoids per-user API calls)
     log(f"[{ts()}] INFO [{handle}] Building handle map...")
-    handle_map = {}
-    cursor = None
-    while True:
-        params = {"actor": handle, "limit": 100}
-        if cursor:
-            params["cursor"] = cursor
-        result = client.app.bsky.graph.get_follows(params)
-        for user in result.follows:
-            handle_map[user.did] = user.handle
-        cursor = result.cursor
-        if not cursor:
-            break
+    handle_map = {user.did: user.handle for user in paginate_follows(client, handle)}
     log(f"[{ts()}] OK   [{handle}] Mapped {len(handle_map)} handles")
 
     # Pull who you follow (with dates from repo records)
     log(f"[{ts()}] INFO [{handle}] Pulling following list with dates...")
-
+    records = paginate_records(client, profile.did, "app.bsky.graph.follow")
     following_records = []
-    cursor = None
-
-    while True:
-        params = {
-            "repo": profile.did,
-            "collection": "app.bsky.graph.follow",
-            "limit": 100,
-        }
-        if cursor:
-            params["cursor"] = cursor
-
-        result = client.com.atproto.repo.list_records(params)
-
-        for record in result.records:
-            subject = record.value.subject if hasattr(record.value, 'subject') else ""
-            created_at = record.value.created_at if hasattr(record.value, 'created_at') else ""
-            following_records.append({
-                "did": subject,
-                "uri": record.uri,
-                "created_at": created_at,
-            })
-
-        cursor = result.cursor
-        if not cursor:
-            break
-
+    for record in records:
+        subject = record.value.subject if hasattr(record.value, 'subject') else ""
+        created_at = record.value.created_at if hasattr(record.value, 'created_at') else ""
+        following_records.append({
+            "did": subject,
+            "uri": record.uri,
+            "created_at": created_at,
+        })
     log(f"[{ts()}] OK   [{handle}] Following {len(following_records)} accounts")
 
-    # Pull your followers (store DID → handle for logging)
+    # Pull your followers
     log(f"[{ts()}] INFO [{handle}] Pulling followers list...")
-    followers = set()
-    follower_handles = {}  # DID → handle
-    cursor = None
-    while True:
-        params = {"actor": handle, "limit": 100}
-        if cursor:
-            params["cursor"] = cursor
-        result = client.app.bsky.graph.get_followers(params)
-        for user in result.followers:
-            followers.add(user.did)
-            follower_handles[user.did] = user.handle
-        cursor = result.cursor
-        if not cursor:
-            break
+    follower_users = paginate_followers(client, handle)
+    followers = set(user.did for user in follower_users)
     log(f"[{ts()}] OK   [{handle}] {len(followers)} followers")
 
     # Find non-followers
@@ -294,41 +254,18 @@ def get_unfollow_preview(accounts, days_threshold, exemptions, log_callback=None
             profile = client.login(handle, password)
 
             # Pull following with dates
+            records = paginate_records(client, profile.did, "app.bsky.graph.follow")
             following_records = []
-            cursor = None
-            while True:
-                params = {
-                    "repo": profile.did,
-                    "collection": "app.bsky.graph.follow",
-                    "limit": 100,
-                }
-                if cursor:
-                    params["cursor"] = cursor
-                result = client.com.atproto.repo.list_records(params)
-                for record in result.records:
-                    subject = record.value.subject if hasattr(record.value, 'subject') else ""
-                    created_at = record.value.created_at if hasattr(record.value, 'created_at') else ""
-                    following_records.append({
-                        "did": subject,
-                        "created_at": created_at,
-                    })
-                cursor = result.cursor
-                if not cursor:
-                    break
+            for record in records:
+                subject = record.value.subject if hasattr(record.value, 'subject') else ""
+                created_at = record.value.created_at if hasattr(record.value, 'created_at') else ""
+                following_records.append({
+                    "did": subject,
+                    "created_at": created_at,
+                })
 
             # Pull followers
-            followers = set()
-            cursor = None
-            while True:
-                params = {"actor": handle, "limit": 100}
-                if cursor:
-                    params["cursor"] = cursor
-                result = client.app.bsky.graph.get_followers(params)
-                for user in result.followers:
-                    followers.add(user.did)
-                cursor = result.cursor
-                if not cursor:
-                    break
+            followers = set(user.did for user in paginate_followers(client, handle))
 
             # Find non-followers
             non_followers = [r for r in following_records if r["did"] not in followers]
