@@ -2,7 +2,7 @@
 Shared pagination utilities for Bluesky API calls.
 """
 
-API_LIMIT = 100
+from utils.constants import API_LIMIT
 
 
 def paginate_follows(client, actor):

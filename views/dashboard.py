@@ -8,6 +8,11 @@ import time
 from datetime import datetime
 from utils.stats import get_stats
 from utils.tracker import save_snapshot
+from utils.constants import (
+    FOLLOW_BACK_RATE_GOOD, FOLLOW_BACK_RATE_OK,
+    ENGAGEMENT_RATE_GOOD, ENGAGEMENT_RATE_OK,
+    NON_FOLLOWER_WARNING_RATIO, NON_FOLLOWER_WARNING_MIN,
+)
 
 
 def render():
@@ -66,16 +71,16 @@ def render():
             follow_back_rate = (followers / following * 100) if following > 0 else 0
 
             # Determine colours
-            if follow_back_rate >= 20:
+            if follow_back_rate >= FOLLOW_BACK_RATE_GOOD:
                 fbr_color = "#4ade80"
-            elif follow_back_rate >= 10:
+            elif follow_back_rate >= FOLLOW_BACK_RATE_OK:
                 fbr_color = "#fbbf24"
             else:
                 fbr_color = "#f87171"
 
-            if engagement_rate >= 5:
+            if engagement_rate >= ENGAGEMENT_RATE_GOOD:
                 er_color = "#4ade80"
-            elif engagement_rate >= 2:
+            elif engagement_rate >= ENGAGEMENT_RATE_OK:
                 er_color = "#fbbf24"
             else:
                 er_color = "#f87171"
@@ -122,7 +127,7 @@ def render():
             # Contextual guidance for edge cases
             if followers == 0:
                 st.info("Your account has no followers yet. Start with the LIKE tab to warm up accounts, then use FOLLOW to grow.")
-            elif non_followers > following * 0.8 and following > 100:
+            elif non_followers > following * NON_FOLLOWER_WARNING_RATIO and following > NON_FOLLOWER_WARNING_MIN:
                 st.markdown(f"""
                 <div style="padding:10px 16px;background:#1a1500;border:1px solid #333;border-left:3px solid #fbbf24;border-radius:2px;margin-bottom:16px;font-size:12px;color:#c8c8c8;font-family:'JetBrains Mono',monospace">
                     High non-follower ratio ({non_followers:,} of {following:,}). Consider running the UNFOLLOW bot to clean up.

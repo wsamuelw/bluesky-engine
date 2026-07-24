@@ -9,6 +9,7 @@ import random
 import time
 from datetime import datetime
 from utils.pagination import paginate_follows, paginate_followers
+from utils.constants import INTERRUPT_TICK
 from core.callbacks import BotCallbacks
 
 from atproto import Client
@@ -170,7 +171,7 @@ def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_ma
             while elapsed < delay:
                 if should_stop():
                     break
-                time.sleep(0.5)
+                time.sleep(INTERRUPT_TICK)
                 elapsed += 0.5
 
     return {"handle": handle, "liked": liked, "skipped": skipped, "errors": errors}
@@ -218,7 +219,7 @@ def _like_user_posts(client, user_did, user_handle, max_likes, delay_min, delay_
                 while elapsed < delay:
                     if should_stop():
                         break
-                    time.sleep(0.5)
+                    time.sleep(INTERRUPT_TICK)
                     elapsed += 0.5
             except Exception as e:
                 err = str(e).lower()

@@ -4,6 +4,7 @@ Generic bot page renderer — shared by Like, Follow, and Unfollow bots.
 
 import streamlit as st
 import streamlit.components.v1 as components
+from utils.constants import LOG_WINDOW
 
 
 def send_notification(title: str, body: str):
@@ -47,7 +48,7 @@ def live_log_panel(runner):
         """, unsafe_allow_html=True)
 
     if logs:
-        log_text = "\n".join(reversed(logs[-50:]))
+        log_text = "\n".join(reversed(logs[-LOG_WINDOW:]))
         st.code(log_text, language="bash")
     else:
         st.code("Starting bot...", language="bash")
@@ -269,7 +270,7 @@ def render_bot_page(
 
         logs = runner.get_logs()
         if logs:
-            log_text = "\n".join(logs[-50:])
+            log_text = "\n".join(logs[-LOG_WINDOW:])
             log_placeholder.code(log_text, language="bash")
         else:
             log_placeholder.markdown(empty_state_html, unsafe_allow_html=True)

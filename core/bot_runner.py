@@ -6,6 +6,7 @@ import threading
 import time
 from collections import deque
 from datetime import datetime
+from utils.constants import STATS_REFRESH_INTERVAL
 
 
 class BotRunner:
@@ -149,7 +150,7 @@ class StatsRefresher:
 
         def run():
             while not self._stop.is_set():
-                self._stop.wait(300)  # 5 minutes
+                self._stop.wait(STATS_REFRESH_INTERVAL)
                 if self._stop.is_set():
                     break
                 try:
