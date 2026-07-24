@@ -69,6 +69,7 @@ def render(get_bluesky_client):
         """, unsafe_allow_html=True)
 
         if submitted:
+            import html
             handle = st.session_state.login_handle.strip()
             password = st.session_state.login_password.strip()
 
@@ -76,7 +77,7 @@ def render(get_bluesky_client):
                 st.session_state["login_error"] = "Please enter both handle and app password."
                 st.rerun()
             elif "." not in handle:
-                st.session_state["login_error"] = f"Invalid handle '{handle}'. Use full format like alice.bsky.social"
+                st.session_state["login_error"] = f"Invalid handle '{html.escape(handle)}'. Use full format like alice.bsky.social"
                 st.rerun()
             else:
                 st.session_state["login_error"] = None
