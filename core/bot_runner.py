@@ -122,6 +122,7 @@ class StatsRefresher:
         self._stop = threading.Event()
         self._last_updated = None
         self._auth_expired = False
+        self._pending_stats = None
 
     @property
     def last_updated(self):
@@ -132,6 +133,13 @@ class StatsRefresher:
     def auth_expired(self):
         with self._lock:
             return self._auth_expired
+
+    def consume_pending_stats(self):
+        """Main thread calls this to pick up fresh stats. Returns None if nothing pending."""
+        with self._lock:
+            stats = self._pending_stats
+            self._pending_stats = None
+            return stats
 
     def start(self, handle, client, get_stats_func):
         if self._thread is not None and self._thread.is_alive():
@@ -146,9 +154,8 @@ class StatsRefresher:
                     break
                 try:
                     stats = get_stats_func(handle, client)
-                    import streamlit as st
-                    st.session_state.cached_stats = stats
                     with self._lock:
+                        self._pending_stats = stats
                         self._last_updated = datetime.now()
                 except Exception as e:
                     err = str(e).lower()

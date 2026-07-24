@@ -44,6 +44,11 @@ def render():
                 st.error("Failed to fetch stats. Please try again.")
                 st.stop()
 
+        # Pick up fresh stats from background refresher (thread-safe)
+        pending = st.session_state.stats_refresher.consume_pending_stats()
+        if pending:
+            st.session_state.cached_stats = pending
+
         # Load stats from cache
         try:
             stats = st.session_state.cached_stats
