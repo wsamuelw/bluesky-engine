@@ -109,7 +109,7 @@ if "app_initialized" not in st.session_state:
 # =============================================================
 
 if not st.session_state.verified:
-    from pages.login import render as render_login
+    from views.login import render as render_login
     render_login(get_bluesky_client)
 
 # =============================================================
@@ -164,12 +164,12 @@ page = st.session_state.active_page
 # =============================================================
 
 if page == "DASHBOARD":
-    from pages.dashboard import render as render_dashboard
+    from views.dashboard import render as render_dashboard
     render_dashboard()
 
 elif page == "LIKE":
     from bots.like_bot import like_bot_run
-    from pages.bot_page import render_bot_page
+    from views.bot_page import render_bot_page
 
     account = [{"handle": st.session_state.handle, "client": st.session_state.get("client"), "enabled": True}]
 
@@ -216,7 +216,7 @@ elif page == "LIKE":
 
 elif page == "FOLLOW":
     from bots.follow_bot import follow_bot_run
-    from pages.bot_page import render_bot_page
+    from views.bot_page import render_bot_page
 
     def build_follow_args(settings, target, exemptions):
         valid_accounts = [{
@@ -272,7 +272,7 @@ elif page == "FOLLOW":
 
 elif page == "UNFOLLOW":
     from bots.unfollow_bot import unfollow_bot_run
-    from pages.bot_page import render_bot_page
+    from views.bot_page import render_bot_page
 
     def build_unfollow_args(settings, target, exemptions):
         account = [{"handle": st.session_state.handle, "client": st.session_state.get("client"), "enabled": True}]
@@ -320,5 +320,5 @@ elif page == "UNFOLLOW":
     )
 
 elif page == "EXPORT":
-    from pages.export import render as render_export
+    from views.export import render as render_export
     render_export()
