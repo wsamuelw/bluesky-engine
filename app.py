@@ -696,6 +696,21 @@ section[data-testid="stSidebar"] button[kind="primary"] {
 .stFormSubmitButton > button p {
     color: #0a0a0a !important;
 }
+/* Disabled buttons */
+.stButton > button:disabled,
+.stFormSubmitButton > button:disabled {
+    background: #222 !important;
+    color: #555 !important;
+    border: 1px solid #333 !important;
+    cursor: not-allowed !important;
+    opacity: 0.6 !important;
+}
+.stButton > button:disabled span,
+.stButton > button:disabled p,
+.stFormSubmitButton > button:disabled span,
+.stFormSubmitButton > button:disabled p {
+    color: #555 !important;
+}
 /* Hide form submit hint text */
 div[data-testid="stForm"] small,
 div[data-testid="stCaptionContainer"],
