@@ -12,8 +12,7 @@ from utils.constants import STATS_REFRESH_INTERVAL
 class BotRunner:
     """Manages bot execution in a background thread with thread-safe state."""
 
-    def __init__(self, name):
-        self._name = name
+    def __init__(self):
         self._lock = threading.Lock()
         self._thread = None
         self._running = False

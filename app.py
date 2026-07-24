@@ -5,7 +5,6 @@ Streamlit app for managing Bluesky follow/like/unfollow bots.
 
 import streamlit as st
 import subprocess
-import os
 from pathlib import Path
 
 # =============================================================
@@ -61,11 +60,11 @@ def get_version():
 from core.bot_runner import BotRunner, StatsRefresher
 
 if 'like_runner' not in st.session_state:
-    st.session_state.like_runner = BotRunner("LIKE")
+    st.session_state.like_runner = BotRunner()
 if 'follow_runner' not in st.session_state:
-    st.session_state.follow_runner = BotRunner("FOLLOW")
+    st.session_state.follow_runner = BotRunner()
 if 'unfollow_runner' not in st.session_state:
-    st.session_state.unfollow_runner = BotRunner("UNFOLLOW")
+    st.session_state.unfollow_runner = BotRunner()
 if 'stats_refresher' not in st.session_state:
     st.session_state.stats_refresher = StatsRefresher()
 
