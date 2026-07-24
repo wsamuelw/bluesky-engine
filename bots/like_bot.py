@@ -154,10 +154,10 @@ def _run_single_account(account, batch_size, likes_per_user, delay_min, delay_ma
         user_handle = following.get(user_did, user_did[:20] + "...")
 
         try:
-            l = _like_user_posts(client, user_did, user_handle, likes_per_user, delay_min, delay_max, log_callback, stop_check)
-            if l > 0:
-                liked += l
-                log(f"[{ts()}] OK   [{handle}] [{i+1}/{len(sample)}] Liked {l} posts from @{user_handle}")
+            liked_count = _like_user_posts(client, user_did, user_handle, likes_per_user, delay_min, delay_max, log_callback, stop_check)
+            if liked_count > 0:
+                liked += liked_count
+                log(f"[{ts()}] OK   [{handle}] [{i+1}/{len(sample)}] Liked {liked_count} posts from @{user_handle}")
             else:
                 skipped += 1
         except Exception as e:
