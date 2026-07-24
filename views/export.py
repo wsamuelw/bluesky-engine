@@ -34,7 +34,11 @@ def render():
     </div>
     """, unsafe_allow_html=True)
 
-    if st.button("EXPORT FOLLOWER PROFILES", use_container_width=True):
+    col_btn, col_spacer = st.columns([1, 3])
+    with col_btn:
+        export_clicked = st.button("EXPORT PROFILES", use_container_width=True)
+
+    if export_clicked:
         try:
             client = st.session_state.client
             handle = st.session_state.handle
