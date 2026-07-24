@@ -205,16 +205,23 @@ class StatsRefresher:
         self._thread = None
         self._stop = threading.Event()
         self._last_updated = None
+        self._auth_expired = False
 
     @property
     def last_updated(self):
         with self._lock:
             return self._last_updated
 
+    @property
+    def auth_expired(self):
+        with self._lock:
+            return self._auth_expired
+
     def start(self, handle, client):
         if self._thread is not None and self._thread.is_alive():
             return
         self._stop.clear()
+        self._auth_expired = False
 
         def run():
             while not self._stop.is_set():
@@ -226,8 +233,12 @@ class StatsRefresher:
                     st.session_state.cached_stats = stats
                     with self._lock:
                         self._last_updated = datetime.now()
-                except Exception:
-                    pass  # silently retry next cycle
+                except Exception as e:
+                    err = str(e).lower()
+                    if "auth" in err or "invalid" in err or "expired" in err or "unauthorized" in err:
+                        with self._lock:
+                            self._auth_expired = True
+                        break
 
         self._thread = threading.Thread(target=run, daemon=True)
         self._thread.start()
@@ -1106,6 +1117,8 @@ if page == "DASHBOARD":
     # Check if account is configured and verified
     if not st.session_state.verified:
         st.info("Please sign in to view dashboard.")
+    elif st.session_state.stats_refresher.auth_expired:
+        st.warning("Your session has expired. Please sign out and sign back in.")
     else:
         # Show branded loading screen on first dashboard load after sign-in
         import time
